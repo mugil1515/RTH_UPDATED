@@ -1,0 +1,2 @@
+import { gsap } from "@/animations/gsapConfig";
+export function mountAgentAnimation(root) { const ctx=gsap.context(()=>{ const tl=gsap.timeline({scrollTrigger:{trigger:root,start:"top 62%",once:true}}); tl.fromTo(".agent-flow span",{opacity:0,y:12},{opacity:1,y:0,duration:.35,stagger:.08}).fromTo(".agent-log-line",{opacity:0,x:-14},{opacity:1,x:0,duration:.28,stagger:.16},.25); },root); return()=>ctx.revert(); }

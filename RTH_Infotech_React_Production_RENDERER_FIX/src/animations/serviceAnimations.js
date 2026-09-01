@@ -1,0 +1,242 @@
+import { gsap, ScrollTrigger } from "@/animations/gsapConfig";
+import { getServicePosition } from "@/utils/servicePosition";
+
+const RADIUS = 37; // must match the radius used in ServiceUniverse's getOrbitPoint/getSvgOrbitPoint calls
+
+export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
+  const onEnter=()=>{gsap.to(speed,{value:.28,duration:.5,ease:"power2.out",overwrite:true,onUpdate:applySpeed})};
+  const onLeave=()=>{gsap.to(speed,{value:1,duration:.5,ease:"power2.out",overwrite:true,onUpdate:applySpeed})};
+  const speed={value:1};
+  const applySpeed=()=>{spin?.timeScale(speed.value);counter?.timeScale(speed.value)};
+  let spin; let counter;
+
+  const ctx = gsap.context(() => {
+    const rotor = root.querySelector(".service-rotor");
+    const orbitNodes = gsap.utils.toArray(".service-node", root);
+    const nodeCount = orbitNodes.length;
+    const updateLabelPositions = () => {
+      const rotation = Number(gsap.getProperty(rotor, "rotation")) || 0;
+      orbitNodes.forEach((node) => {
+        const index = Number(node.dataset.index);
+        const base = getServicePosition(index, nodeCount, RADIUS);
+        const radians = ((base.angle + rotation) * Math.PI) / 180;
+        const label = node.querySelector(".service-label");
+        if (!label) return;
+        label.style.setProperty("--label-x", `${(Math.cos(radians) * 15).toFixed(2)}cqw`);
+        label.style.setProperty("--label-y", `${(Math.sin(radians) * 15).toFixed(2)}cqw`);
+      });
+    };
+
+    updateLabelPositions();
+    spin = gsap.to(".service-rotor", { rotation: 360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%", onUpdate: updateLabelPositions });
+    counter = gsap.to(".service-node-content", { rotation: -360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
+
+    if (compact || !hintEl) {
+      // Compact usage (e.g. the standalone /services page hero) keeps a simple
+      // scroll-triggered reveal -- no scroll-scrubbed emergence sequence.
+      gsap.fromTo(".service-core", { opacity: 0, scale: .82 }, { opacity: 1, scale: 1, duration: .7, ease: "power3.out", scrollTrigger: { trigger: root, start: "top 75%" } });
+      gsap.fromTo(".service-node", { opacity: 0, scale: .6 }, { opacity: 1, scale: 1, duration: .55, stagger: .05, ease: "power3.out", scrollTrigger: { trigger: root, start: "top 72%" } });
+      gsap.fromTo(".service-connector", { opacity: 0 }, { opacity: .28, duration: .7, stagger: .04, scrollTrigger: { trigger: root, start: "top 72%" } });
+      root.classList.add("orbit-stable");
+      return;
+    }
+
+    const orbitEl = root.querySelector(".service-orbit");
+    const nodes = gsap.utils.toArray(".service-node", root);
+    const count = nodes.length;
+    const nodeByIndex = {};
+    nodes.forEach((node) => { nodeByIndex[node.dataset.index] = node; });
+    const lineByIndex = {};
+    gsap.utils.toArray(".service-connector", root).forEach((line) => { lineByIndex[line.dataset.index] = line; });
+
+    // Each node's outward travel offset (in px, from the core center to its
+    // orbit slot) is derived live from the orbit's *current* rendered box, so
+    // it stays correct across resize/orientation change (invalidateOnRefresh).
+    const nodeOffset = (index) => {
+      const rect = orbitEl.getBoundingClientRect();
+      const p = getServicePosition(index, count, RADIUS);
+      return { x: (p.ux * RADIUS) / 100 * rect.width, y: (p.uy * RADIUS) / 100 * rect.height };
+    };
+
+    gsap.set(".service-core", { opacity: 0, scale: .82 });
+    gsap.set(hintEl, { opacity: 0 });
+
+    // The Core's entrance is a normal scrub tween tied to the section's own
+    // natural scroll-in -- nothing is pinned. Finish the entrance slightly
+    // before the orbit reaches the viewport centre so the section never
+    // looks empty to someone scrolling at a normal pace.
+    gsap.fromTo(".service-core",
+      { opacity: 0, scale: .82 },
+      {
+        opacity: 1, scale: 1, ease: "power2.out",
+        scrollTrigger: { trigger: root, start: "top bottom", end: "center 62%", scrub: .55 },
+      });
+
+    // Reveal timeline: fully TIME-based, not scroll-scrubbed. Built once
+    // here (paused), then played exactly once the moment the Core reaches
+    // center (see the trigger below) -- from that point on it runs on its
+    // own regardless of further scroll.
+    //   node travels center -> orbit slot (scale .28/opacity 0 -> 1/1)
+    //   connector grows alongside it (same start time, same duration)
+    //   label fades in only once the node is ~85% of the way to its slot
+    //   each service starts STAGGER seconds after the previous one
+    //   hint fades in only after the very last label has settled
+    const NODE_DURATION = .55;
+    const STAGGER = .07;
+    const revealTl = gsap.timeline({
+      paused: true,
+      defaults: { ease: "power2.out" },
+      onComplete: () => root.classList.add("orbit-stable"),
+    });
+
+    for (let i = 0; i < count; i += 1) {
+      const node = nodeByIndex[i];
+      if (!node) continue;
+      const label = node.querySelector(".service-label");
+      const line = lineByIndex[i];
+      const start = i * STAGGER;
+
+      revealTl.fromTo(node,
+        { x: () => -nodeOffset(i).x, y: () => -nodeOffset(i).y, scale: .28, opacity: 0 },
+        { x: 0, y: 0, scale: 1, opacity: 1, duration: NODE_DURATION },
+        start);
+
+      if (line) {
+        const len = line.getTotalLength();
+        gsap.set(line, { strokeDasharray: len, strokeDashoffset: len, opacity: .28 });
+        revealTl.fromTo(line, { strokeDashoffset: len }, { strokeDashoffset: 0, duration: NODE_DURATION }, start);
+      }
+
+      if (label) revealTl.fromTo(label, { opacity: 0 }, { opacity: 1, duration: NODE_DURATION * .3, ease: "power1.out" }, start + NODE_DURATION * .85);
+    }
+
+    revealTl.fromTo(hintEl, { opacity: 0 }, { opacity: 1, duration: .3, ease: "power1.out" });
+
+    // Explicitly force every node/label/connector back to its hidden,
+    // at-Core state -- NOT the same as revealTl.pause(0), which would only
+    // reset whichever child tweens happen to already have their start time
+    // at/after 0 and leave the rest sitting at their finished ("to") state.
+    const resetReveal = () => {
+      gsap.ticker.remove(driveReveal);
+      for (let i = 0; i < count; i += 1) {
+        const node = nodeByIndex[i];
+        if (!node) continue;
+        const label = node.querySelector(".service-label");
+        const line = lineByIndex[i];
+        const offset = nodeOffset(i);
+        gsap.set(node, { x: -offset.x, y: -offset.y, scale: .28, opacity: 0 });
+        if (label) gsap.set(label, { opacity: 0 });
+        if (line) gsap.set(line, { strokeDashoffset: line.getTotalLength(), opacity: .28 });
+      }
+      gsap.set(hintEl, { opacity: 0 });
+      root.classList.remove("orbit-stable");
+      revealTl.pause();
+    };
+
+    // Drive the reveal manually, with a capped per-frame delta, instead of
+    // letting GSAP's own ticker advance it natively. The app's global
+    // gsap.ticker.lagSmoothing(0) (set in useLenis.js, needed so Lenis-driven
+    // scrub tweens elsewhere don't visibly "catch up" after a stall) means
+    // any NORMALLY-playing timeline can jump straight to completion in one
+    // frame if the tab stalls/backgrounds right as it starts -- verified this
+    // actually happens with GSAP's native .restart(). A time-based reveal
+    // like this one has no scroll position to fall back on, so it can't be
+    // allowed to skip; capping each frame's advance guarantees it always
+    // plays through every step even after a real stall (it just catches up
+    // at a bounded rate rather than teleporting to the end).
+    const MAX_FRAME_DELTA = 1 / 30;
+    const driveReveal = (_time, deltaMs) => {
+      const next = revealTl.time() + Math.min(deltaMs / 1000, MAX_FRAME_DELTA);
+      if (next >= revealTl.duration()) {
+        revealTl.time(revealTl.duration());
+        gsap.ticker.remove(driveReveal);
+      } else {
+        revealTl.time(next);
+      }
+    };
+
+    // No pin: the Core is never locked in place, so there is nothing that
+    // can suddenly grab the page and snap it back -- scrolling stays
+    // completely natural the whole time, in both directions. "Reached
+    // 62%" is the exact same crossing the entrance tween above already
+    // uses ("top bottom" -> "center 62%" on this same root element), so
+    // this is a second, independent trigger over that identical range:
+    // onLeave fires just before the Core's own center reaches the viewport's
+    // center on the way down, giving the services time to become visible
+    // before a fast-scrolling visitor moves past the section.
+    let hasPlayed = false;
+    const playOnce = () => {
+      if (hasPlayed) return;
+      hasPlayed = true;
+      revealTl.time(0);
+      gsap.ticker.add(driveReveal);
+    };
+    ScrollTrigger.create({
+      trigger: root,
+      start: "top bottom",
+      end: "center 62%",
+      onLeave: playOnce,
+      onEnterBack: playOnce,
+      // Only a genuine backward exit (scrolled up and out above the section)
+      // resets -- never fires from a small in-place wheel wiggle, since
+      // ScrollTrigger only calls this when its own start boundary is
+      // actually crossed going back upward.
+      onLeaveBack: () => {
+        hasPlayed = false;
+        resetReveal();
+      },
+    });
+
+    return () => {
+      gsap.ticker.remove(driveReveal);
+      revealTl.kill();
+    };
+  }, root);
+
+  root.addEventListener("mouseenter",onEnter); root.addEventListener("mouseleave",onLeave);
+  return () => {
+    root.removeEventListener("mouseenter",onEnter);root.removeEventListener("mouseleave",onLeave);
+    root.classList.remove("orbit-stable");
+    gsap.killTweensOf(speed);
+    ctx.revert();
+  };
+}
+// Icon-origin transition: the panel launches from (and returns to) the exact clicked
+// service node's screen position, restored from the original build's requestOpenService
+// flow (K.querySelector(".sv-icon").getBoundingClientRect()) via the same FLIP technique
+// (invert panel<->icon delta, then animate the invert away) rather than a fixed pop.
+function originDelta(panel, originRect) {
+  const panelRect = panel.getBoundingClientRect();
+  const originCenterX = originRect.left + originRect.width / 2;
+  const originCenterY = originRect.top + originRect.height / 2;
+  const panelCenterX = panelRect.left + panelRect.width / 2;
+  const panelCenterY = panelRect.top + panelRect.height / 2;
+  return {
+    x: originCenterX - panelCenterX,
+    y: originCenterY - panelCenterY,
+    scale: Math.min(1, Math.max(originRect.width / panelRect.width, 0.05)),
+  };
+}
+
+export function animateServiceModal(panel, originRect) {
+  if (originRect) {
+    const { x, y, scale } = originDelta(panel, originRect);
+    return gsap.fromTo(
+      panel,
+      { x, y, scale, opacity: 0, filter: "blur(6px)" },
+      { x: 0, y: 0, scale: 1, opacity: 1, filter: "blur(0px)", duration: 0.62, ease: "power4.out" },
+    );
+  }
+  return gsap.fromTo(panel, { opacity: 0, scale: .84, y: 30, filter: "blur(16px)" }, { opacity: 1, scale: 1, y: 0, filter: "blur(0px)", duration: .55, ease: "power4.out" });
+}
+export function closeServiceModal(panel, scrim, onDone, originRect) {
+  const tl = gsap.timeline({ onComplete: onDone });
+  if (originRect) {
+    const { x, y, scale } = originDelta(panel, originRect);
+    tl.to(panel, { x, y, scale, opacity: 0, filter: "blur(8px)", duration: .42, ease: "power2.in" }, 0);
+  } else {
+    tl.to(panel, { opacity: 0, scale: .9, y: 18, filter: "blur(10px)", duration: .32, ease: "power2.in" }, 0);
+  }
+  if (scrim) tl.to(scrim, { opacity: 0, duration: .28, ease: "power2.in" }, 0);
+  return tl;
+}

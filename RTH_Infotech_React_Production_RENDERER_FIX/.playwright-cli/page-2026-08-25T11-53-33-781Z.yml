@@ -1,0 +1,296 @@
+- generic [ref=e2]:
+  - generic:
+    - generic:
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{ \"invoice_automation\": { \"order\": \"RTH-208"
+  - link "RTH Infotech home" [ref=e6] [cursor=pointer]:
+    - /url: /
+    - img "RTH Infotech" [ref=e7]
+  - main [ref=e12]:
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - paragraph [ref=e46]: RTH INFOTECH PVT LTD
+        - heading "AI THAT RUNS YOUR BUSINESS." [level=1] [ref=e47]:
+          - generic [ref=e48]:
+            - generic [ref=e49]: A
+            - generic [ref=e50]: I
+            - generic [ref=e52]: T
+            - generic [ref=e53]: H
+            - generic [ref=e54]: A
+            - generic [ref=e55]: T
+            - generic [ref=e57]: R
+            - generic [ref=e58]: U
+            - generic [ref=e59]: "N"
+            - generic [ref=e60]: S
+          - generic [ref=e61]:
+            - generic [ref=e62]: "Y"
+            - generic [ref=e63]: O
+            - generic [ref=e64]: U
+            - generic [ref=e65]: R
+            - generic [ref=e67]: B
+            - generic [ref=e68]: U
+            - generic [ref=e69]: S
+            - generic [ref=e70]: I
+            - generic [ref=e71]: "N"
+            - generic [ref=e72]: E
+            - generic [ref=e73]: S
+            - generic [ref=e74]: S
+            - generic [ref=e75]: .
+        - paragraph [ref=e76]: Intelligent automation engineered around the way your business actually works.
+        - generic [ref=e77]:
+          - button "EXPLORE RTH AI" [ref=e78] [cursor=pointer]
+          - button "WHAT CAN WE AUTOMATE?" [ref=e79] [cursor=pointer]
+      - generic [ref=e80]: Scroll
+    - generic [ref=e84]:
+      - generic [ref=e85]:
+        - generic [ref=e86]: The Cost of Manual Work
+        - heading "WHAT'S SLOWING YOUR BUSINESS DOWN?" [level=2] [ref=e87]: WHAT'S SLOWINGYOUR BUSINESS DOWN?
+      - generic [ref=e88]:
+        - generic [ref=e89]: Manual Billing
+        - generic [ref=e91]: Invoice Processing
+        - generic [ref=e93]: Repetitive Data Entry
+        - generic [ref=e95]: Customer Questions
+        - generic [ref=e97]: Daily Reports
+        - generic [ref=e99]: Manual Follow-ups
+        - generic [ref=e101]: Document Processing
+        - generic [ref=e103]: Repetitive Emails
+      - generic [ref=e105]: RTH INTELLIGENCE LAYER
+    - generic [ref=e108]:
+      - heading "RTH Intelligence Core services" [level=2] [ref=e109]
+      - generic [ref=e111]:
+        - generic [ref=e112]:
+          - generic [ref=e113]: ☝
+          - generic [ref=e114]:
+            - generic [ref=e115]: CLICK / TAP ANY SERVICE
+            - generic [ref=e116]: TO EXPLORE THE SYSTEM
+        - generic [ref=e117]:
+          - generic [ref=e128]:
+            - generic:
+              - button "Explore Quality Engineering":
+                - generic:
+                  - generic:
+                    - generic: Quality
+                    - text: Engineering
+            - generic:
+              - button "Explore UI/UX & Product Design":
+                - generic:
+                  - generic:
+                    - generic: UI/UX &
+                    - text: Product Design
+            - generic:
+              - button "Explore API & Integrations":
+                - generic:
+                  - generic:
+                    - generic: API &
+                    - text: Integrations
+            - generic:
+              - button "Explore Mobile Applications":
+                - generic:
+                  - generic:
+                    - generic: Mobile
+                    - text: Applications
+            - generic:
+              - button "Explore Cloud & Infrastructure":
+                - generic:
+                  - generic:
+                    - generic: Cloud &
+                    - text: Infrastructure
+            - generic:
+              - button "Explore Cybersecurity":
+                - generic: Cybersecurity
+            - generic:
+              - button "Explore DevOps":
+                - generic: DevOps
+            - generic:
+              - button "Explore Data & Analytics":
+                - generic:
+                  - generic:
+                    - generic: Data &
+                    - text: Analytics
+            - generic:
+              - button "Explore Digital Transformation":
+                - generic:
+                  - generic:
+                    - generic: Digital
+                    - text: Transformation
+            - generic:
+              - button "Explore Enterprise Software":
+                - generic:
+                  - generic:
+                    - generic: Enterprise
+                    - text: Software
+            - generic:
+              - button "Explore AI & Automation":
+                - generic:
+                  - generic:
+                    - generic: AI &
+                    - text: Automation
+            - generic:
+              - button "Explore Web Engineering":
+                - generic:
+                  - generic:
+                    - generic: Web
+                    - text: Engineering
+          - generic [ref=e129]:
+            - paragraph [ref=e132]: INTELLIGENCECORE
+            - strong [ref=e133]: AI & AUTOMATION
+            - generic [ref=e134]: SYSTEM ONLINE
+    - generic [ref=e137]:
+      - generic [ref=e138]:
+        - generic [ref=e139]: Flagship System
+        - heading "AUTOMATIC BILL GENERATION" [level=2] [ref=e140]: AUTOMATIC BILLGENERATION
+      - generic [ref=e141]:
+        - generic [ref=e142]:
+          - paragraph [ref=e143]: RTH BILL AI
+          - generic [ref=e144]: "Invoice #RTH-2084"
+          - generic [ref=e145]: ABC Enterprises
+          - generic [ref=e146]:
+            - generic [ref=e147]:
+              - term [ref=e148]: Subtotal
+              - definition [ref=e149]: ₹18,500
+            - generic [ref=e150]:
+              - term [ref=e151]: GST 18%
+              - definition [ref=e152]: ₹3,330
+            - generic [ref=e153]:
+              - term [ref=e154]: Total
+              - definition [ref=e155]: ₹21,830
+        - generic [ref=e156]:
+          - paragraph [ref=e157]: EXECUTION SEQUENCE
+          - generic [ref=e158]:
+            - generic [ref=e159]: ✓
+            - generic [ref=e160]: "01"
+            - generic [ref=e161]: Analyze transaction
+          - generic [ref=e162]:
+            - generic [ref=e163]: ✓
+            - generic [ref=e164]: "02"
+            - generic [ref=e165]: Calculate tax
+          - generic [ref=e166]:
+            - generic [ref=e167]: ✓
+            - generic [ref=e168]: "03"
+            - generic [ref=e169]: Generate invoice
+          - generic [ref=e170]:
+            - generic [ref=e171]: ✓
+            - generic [ref=e172]: "04"
+            - generic [ref=e173]: Email invoice
+          - generic [ref=e174]:
+            - generic [ref=e175]: ✓
+            - generic [ref=e176]: "05"
+            - generic [ref=e177]: Send WhatsApp confirmation
+          - generic [ref=e178]:
+            - generic [ref=e179]: ✓
+            - generic [ref=e180]: "06"
+            - generic [ref=e181]: Sync accounting
+    - generic [ref=e183]:
+      - generic [ref=e184]:
+        - generic [ref=e185]: Autonomous Execution
+        - heading "DON'T JUST ANSWER. ACT." [level=2] [ref=e186]: DON'T JUST ANSWER.ACT.
+      - generic [ref=e187]:
+        - generic [ref=e188]: Trigger
+        - generic [ref=e190]:
+          - emphasis [ref=e191]: →
+          - generic [ref=e192]: Decision
+        - generic [ref=e193]:
+          - emphasis [ref=e194]: →
+          - generic [ref=e195]: Action
+        - generic [ref=e196]:
+          - emphasis [ref=e197]: →
+          - generic [ref=e198]: Confirm
+      - generic [ref=e199]:
+        - generic [ref=e200]: "> Checking overdue invoices..."
+        - generic [ref=e201]: "> 13 records detected."
+        - generic [ref=e202]: "> Generating personalized reminders..."
+        - generic [ref=e203]: "> 13 messages prepared."
+        - generic [ref=e204]: "> Sending..."
+        - generic [ref=e205]: "> Completed."
+        - generic [ref=e206]: "> CRM updated."
+        - generic [ref=e207]: "> Next follow-up scheduled."
+    - generic [ref=e209]:
+      - generic [ref=e210]:
+        - generic [ref=e211]: Built For Your Industry
+        - heading "SYSTEMS THAT FIT HOW YOU WORK" [level=2] [ref=e212]: SYSTEMS THAT FITHOW YOU WORK
+      - generic [ref=e213]:
+        - generic [ref=e214]:
+          - button "01 Retail →" [ref=e215] [cursor=pointer]:
+            - generic [ref=e216]: "01"
+            - generic [ref=e217]: Retail
+            - generic [ref=e218]: →
+          - button "02 Real Estate →" [ref=e219] [cursor=pointer]:
+            - generic [ref=e220]: "02"
+            - generic [ref=e221]: Real Estate
+            - generic [ref=e222]: →
+          - button "03 Finance →" [ref=e223] [cursor=pointer]:
+            - generic [ref=e224]: "03"
+            - generic [ref=e225]: Finance
+            - generic [ref=e226]: →
+          - button "04 Healthcare →" [ref=e227] [cursor=pointer]:
+            - generic [ref=e228]: "04"
+            - generic [ref=e229]: Healthcare
+            - generic [ref=e230]: →
+          - button "05 Education →" [ref=e231] [cursor=pointer]:
+            - generic [ref=e232]: "05"
+            - generic [ref=e233]: Education
+            - generic [ref=e234]: →
+          - button "06 Manufacturing →" [ref=e235] [cursor=pointer]:
+            - generic [ref=e236]: "06"
+            - generic [ref=e237]: Manufacturing
+            - generic [ref=e238]: →
+        - generic [ref=e239]:
+          - heading "Retail" [level=3] [ref=e240]
+          - paragraph [ref=e241]: Automating the storefront-to-ledger loop — billing, inventory, and customer engagement in sync.
+          - list [ref=e242]:
+            - listitem [ref=e243]: Automatic Billing
+            - listitem [ref=e245]: Inventory Forecasting
+            - listitem [ref=e247]: Customer AI
+            - listitem [ref=e249]: Sales Analytics
+            - listitem [ref=e251]: WhatsApp Automation
+    - generic [ref=e254]:
+      - generic [ref=e255]:
+        - generic [ref=e256]: Try It
+        - heading "WHAT SHOULD WE AUTOMATE FOR YOU?" [level=2] [ref=e257]: WHAT SHOULDWE AUTOMATE FOR YOU?
+      - textbox "Describe a repetitive task in your business..." [ref=e258]: We manually create more than 200 customer invoices every month.
+      - button "ANALYZE PROCESS" [ref=e259] [cursor=pointer]
+    - generic [ref=e262]:
+      - generic [ref=e263]:
+        - generic [ref=e264]: Who We Are
+        - paragraph [ref=e265]: Chennai, India
+        - heading "WE ARE RTH. AI ENGINEERING FOR REAL BUSINESS PROBLEMS." [level=2] [ref=e266]: WE ARE RTH.AI ENGINEERING FORREAL BUSINESS PROBLEMS.
+      - paragraph [ref=e267]: We don't start with technology — we start with the manual process costing you time. Every system we build exists to remove a specific, repeatable piece of work from your team's day.
+      - generic [ref=e268]:
+        - generic [ref=e269]: RTH
+        - generic [ref=e270]: AI Engineering
+        - generic [ref=e271]: Automation
+        - generic [ref=e272]: Business Systems
+        - generic [ref=e273]: Custom Software
+      - generic [ref=e274]:
+        - text: THE ENGINEERING LAYER BEHIND RTH AI
+        - paragraph [ref=e275]: Web · Mobile · Cloud · APIs · UI/UX · Enterprise Software
+    - generic [ref=e277]:
+      - generic [ref=e278]:
+        - generic [ref=e279]: Let's Build
+        - heading "READY TO AUTOMATE YOUR BUSINESS?" [level=2] [ref=e280]: READY TO AUTOMATEYOUR BUSINESS?
+      - generic [ref=e281]:
+        - generic [ref=e282]:
+          - generic [ref=e283]: Name
+          - textbox "Name" [ref=e284]:
+            - /placeholder: Your name
+        - generic [ref=e285]:
+          - generic [ref=e286]: Company
+          - textbox "Company" [ref=e287]:
+            - /placeholder: Company name
+        - generic [ref=e288]:
+          - generic [ref=e289]: Email
+          - textbox "Email" [ref=e290]:
+            - /placeholder: you@company.com
+        - generic [ref=e291]:
+          - generic [ref=e292]: What would you like to automate?
+          - textbox "What would you like to automate?" [ref=e293]:
+            - /placeholder: Tell us about the manual process...
+        - button "START WITH RTH" [ref=e294] [cursor=pointer]
+      - generic [ref=e295]:
+        - text: RTH INFOTECH PVT LTD
+        - heading "AI THAT RUNS YOUR BUSINESS." [level=3] [ref=e296]
+  - contentinfo [ref=e35]:
+    - generic [ref=e36]: © 2026 RTH Infotech Pvt Ltd
+    - generic [ref=e37]: Chennai, India
+  - button "Open RTH AI assistant" [ref=e38] [cursor=pointer]

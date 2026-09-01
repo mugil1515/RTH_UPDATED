@@ -1,0 +1,1 @@
+export default function IndustryPanel({industry}){return <div className="industry-panel"><h3>{industry.label}</h3><p>{industry.descriptor}</p><ul>{industry.items.map(x=><li key={x}><i/>{x}</li>)}</ul></div>}

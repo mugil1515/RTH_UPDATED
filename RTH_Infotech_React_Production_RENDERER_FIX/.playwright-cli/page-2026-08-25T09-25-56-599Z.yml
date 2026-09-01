@@ -1,0 +1,76 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: INITIALIZING RTH AI
+  - generic:
+    - generic:
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{"
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{ \""
+      - generic: JSON • LIVE DATA
+      - generic: JSON • LIVE DATA
+  - link "RTH Infotech home" [ref=e6] [cursor=pointer]:
+    - /url: /
+    - img "RTH Infotech" [ref=e7]
+  - main [ref=e8]:
+    - button "Go back to the previous page" [ref=e9] [cursor=pointer]:
+      - generic [ref=e12]: BACK
+    - article [ref=e13]:
+      - link "ALL SERVICES" [ref=e14] [cursor=pointer]:
+        - /url: /services
+      - generic [ref=e18]:
+        - generic [ref=e19]: 02 / Digital Foundations
+        - heading "Web Engineering" [level=1] [ref=e20]
+        - paragraph [ref=e21]: Web applications and platforms built to hold up under real traffic and real business logic.
+        - generic [ref=e22]:
+          - generic [ref=e23]: Responsive
+          - generic [ref=e24]: SEO-ready
+          - generic [ref=e25]: Scalable
+        - link "BUILD WITH RTH" [ref=e26] [cursor=pointer]:
+          - /url: /contact
+      - generic [ref=e43]:
+        - generic [ref=e44]:
+          - heading "Capabilities" [level=2] [ref=e45]
+          - generic [ref=e46]:
+            - generic [ref=e47]: Web Applications
+            - generic [ref=e48]: SaaS Platforms
+            - generic [ref=e49]: E-commerce
+            - generic [ref=e50]: Admin Dashboards
+            - generic [ref=e51]: Customer Portals
+            - generic [ref=e52]: Landing Pages
+            - generic [ref=e53]: Corporate Websites
+            - generic [ref=e54]: Progressive Web Apps
+            - generic [ref=e55]: Enterprise Web Apps
+            - generic [ref=e56]: CMS Development
+            - generic [ref=e57]: Headless Websites
+            - generic [ref=e58]: AI-powered Websites
+        - generic [ref=e59]:
+          - heading "Engineering tools" [level=2] [ref=e60]
+          - generic [ref=e61]:
+            - generic [ref=e62]: React
+            - generic [ref=e63]: Next.js
+            - generic [ref=e64]: TypeScript
+            - generic [ref=e65]: Node.js
+            - generic [ref=e66]: Tailwind CSS
+            - generic [ref=e67]: GSAP
+            - generic [ref=e68]: Three.js
+            - generic [ref=e69]: PostgreSQL
+        - generic [ref=e70]:
+          - heading "Delivery process" [level=2] [ref=e71]
+          - generic [ref=e72]:
+            - generic [ref=e73]:
+              - generic [ref=e74]: "01"
+              - text: Product architecture
+            - generic [ref=e75]:
+              - generic [ref=e76]: "02"
+              - text: UI engineering
+            - generic [ref=e77]:
+              - generic [ref=e78]: "03"
+              - text: API integration
+            - generic [ref=e79]:
+              - generic [ref=e80]: "04"
+              - text: Performance + launch
+  - contentinfo [ref=e81]:
+    - generic [ref=e82]: © 2026 RTH Infotech Pvt Ltd
+    - generic [ref=e83]: Chennai, India

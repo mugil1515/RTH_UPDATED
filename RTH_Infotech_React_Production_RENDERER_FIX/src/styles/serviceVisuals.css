@@ -1,0 +1,234 @@
+/* RTH per-service visuals — restored from the original static build
+   (existing-original/index-original.html). Structure/classnames/colors mirror the
+   "sd-visual vis-*" templates 1:1; Space Mono substituted with the project's existing
+   JetBrains Mono (no new font dependency). Entrance/exit still handled by the existing
+   animateServiceModal/closeServiceModal in serviceAnimations.js — these rules are the
+   ambient/idle motion once the modal is on screen. */
+
+/* Orbit dim-on-open: the clicked node stays emphasized, its siblings recede — the
+   pre-open half of the icon-origin transition. Toggled via ServiceUniverse's
+   `is-dimmed`/`is-active` classes; !important overrides GSAP's own inline opacity
+   left over from the scroll-scrubbed orbit timeline in serviceAnimations.js. */
+.service-node { transition: opacity 0.4s ease, filter 0.4s ease; }
+.service-rotor.is-dimmed .service-node:not(.is-active) { opacity: 0.28 !important; filter: saturate(0.35); }
+.service-rotor.is-dimmed .service-node.is-active { filter: brightness(1.15); }
+
+.sd-visual {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.sd-visual > div {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sd-visual .svx-glass {
+  border: 1px solid rgba(217, 168, 255, 0.23);
+  background: linear-gradient(145deg, #c77dff1f, #0d0613b8);
+  box-shadow: inset 0 1px #ffffff12, 0 18px 42px #0000004d;
+}
+.sd-visual .svx-packet {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff9ff;
+  box-shadow: 0 0 13px #c13eff;
+}
+
+/* AI & Automation */
+.vis-ai .ai-core { position: absolute; width: 92px; height: 92px; border-radius: 26px; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(45deg); border: 1px solid rgba(217, 168, 255, 0.45); background: linear-gradient(145deg, #c13eff38, #13081cc7); box-shadow: 0 0 42px #c13eff33, inset 0 0 28px #d9a8ff14; animation: aiCore 4s ease-in-out infinite; }
+.vis-ai .ai-core:after { content: ""; position: absolute; width: 22px; height: 22px; border-radius: 50%; left: 50%; top: 50%; transform: translate(-50%, -50%); background: #f3dfff; box-shadow: 0 0 24px #c13eff; }
+.vis-ai .ai-orbit { position: absolute; width: 230px; height: 230px; border: 1px solid rgba(199, 125, 255, 0.18); border-radius: 50%; animation: orbitSpin 12s linear infinite; }
+.vis-ai .ai-orbit:nth-child(2) { width: 170px; height: 170px; animation-direction: reverse; animation-duration: 8s; }
+.vis-ai .ai-node { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #c77dff; box-shadow: 0 0 15px #c13eff99; }
+.vis-ai .ai-node.n1 { left: 12%; top: 26%; }
+.vis-ai .ai-node.n2 { right: 13%; top: 30%; }
+.vis-ai .ai-node.n3 { left: 20%; bottom: 18%; }
+.vis-ai .ai-node.n4 { right: 21%; bottom: 15%; }
+
+/* Web Engineering */
+.vis-web .browser { width: 82%; max-width: 360px; border-radius: 18px; overflow: hidden; transform: perspective(700px) rotateY(-7deg) rotateX(4deg); animation: webFloat 5s ease-in-out infinite; }
+.vis-web .browser-top { height: 34px; border-bottom: 1px solid rgba(217, 168, 255, 0.13); display: flex; align-items: center; gap: 6px; padding: 0 12px; }
+.vis-web .browser-top i { width: 6px; height: 6px; border-radius: 50%; background: #c77dff; opacity: 0.5; }
+.vis-web .browser-body { padding: 16px; display: grid; grid-template-columns: 0.7fr 1.3fr; gap: 13px; }
+.vis-web .web-nav { border-radius: 11px; min-height: 180px; background: #c77dff0e; }
+.vis-web .web-content { display: grid; grid-template-rows: 42px 1fr; gap: 10px; }
+.vis-web .web-hero, .vis-web .web-card { border-radius: 10px; background: linear-gradient(135deg, #c13eff29, #d9a8ff09); }
+.vis-web .web-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vis-web .web-card { animation: webPulse 3.2s ease-in-out infinite; }
+.vis-web .web-card:nth-child(2) { animation-delay: 0.4s; }
+.vis-web .web-card:nth-child(3) { animation-delay: 0.8s; }
+
+/* Mobile Applications */
+.vis-mobile .phone { width: 124px; height: 238px; border-radius: 29px; padding: 9px; position: relative; transform: rotate(-5deg); animation: phoneFloat 4.8s ease-in-out infinite; }
+.vis-mobile .screen { width: 100%; height: 100%; border-radius: 22px; padding: 20px 11px 12px; background: linear-gradient(180deg, #c13eff26, #0c0612f2); display: block; }
+.vis-mobile .notch { position: absolute; top: 14px; left: 50%; transform: translate(-50%); width: 40px; height: 6px; border-radius: 9px; background: #170b20; }
+.vis-mobile .m-hero { height: 55px; border-radius: 13px; background: linear-gradient(135deg, #a344f3, #c77dff2e); margin-bottom: 9px; }
+.vis-mobile .m-row { height: 28px; border-radius: 9px; background: #d9a8ff12; margin: 7px 0; }
+.vis-mobile .phone.ghost { position: absolute; transform: translate(58px, 14px) rotate(8deg) scale(0.84); opacity: 0.42; filter: blur(0.2px); }
+
+/* Enterprise Software */
+.vis-enterprise .ent-hub { position: relative; width: 74px; height: 74px; border-radius: 20px; display: grid; place-items: center; color: #fff9ff; font-size: 0.63rem; letter-spacing: 0.08em; z-index: 3; background: linear-gradient(145deg, #c13eff45, #13081cc7); border: 1px solid rgba(217, 168, 255, 0.45); box-shadow: 0 0 32px #c13eff33; }
+.vis-enterprise .ent-mod { position: absolute; width: 82px; height: 48px; border-radius: 13px; display: grid; place-items: center; font-size: 0.58rem; color: #d9cbe2; }
+.vis-enterprise .e1 { left: 10%; top: 15%; }
+.vis-enterprise .e2 { right: 10%; top: 15%; }
+.vis-enterprise .e3 { left: 10%; bottom: 15%; }
+.vis-enterprise .e4 { right: 10%; bottom: 15%; }
+.vis-enterprise .ent-ring { position: absolute; width: 250px; height: 180px; border: 1px dashed rgba(199, 125, 255, 0.2); border-radius: 50%; animation: orbitSpin 18s linear infinite; }
+
+/* Cloud & Infrastructure */
+.vis-cloud .cloud-core { width: 150px; height: 76px; border-radius: 60px 60px 38px 38px; position: relative; display: grid; place-items: center; font-size: 0.61rem; letter-spacing: 0.1em; color: #f5ecfa; animation: cloudFloat 4s ease-in-out infinite; background: linear-gradient(145deg, #c13eff38, #13081cc7); border: 1px solid rgba(217, 168, 255, 0.35); }
+.vis-cloud .cloud-core:before, .vis-cloud .cloud-core:after { content: ""; position: absolute; border-radius: 50%; background: inherit; border: inherit; }
+.vis-cloud .cloud-core:before { width: 64px; height: 64px; left: 23px; top: -28px; }
+.vis-cloud .cloud-core:after { width: 78px; height: 78px; right: 20px; top: -36px; }
+.vis-cloud .server { position: absolute; width: 72px; height: 40px; border-radius: 10px; bottom: 30%; }
+.vis-cloud .s1 { left: 12%; }
+.vis-cloud .s2 { right: 12%; }
+.vis-cloud .cp1 { animation: packetCloud 2.8s linear infinite; left: 23%; top: 62%; }
+.vis-cloud .cp2 { animation: packetCloud 2.8s linear infinite reverse; right: 23%; top: 62%; }
+
+/* Data & Analytics */
+.vis-data { perspective: 900px; }
+.vis-data .chart { width: 84%; max-width: 340px; height: 210px; border: 1px solid rgba(217, 168, 255, 0.14); border-radius: 18px; padding: 22px 20px 18px; position: relative; display: flex; align-items: flex-end; gap: 12px; overflow: hidden; background: linear-gradient(145deg, #c13eff12, #0c0514c7); }
+.vis-data .chart-grid { position: absolute; inset: 16px 16px 16px 20px; background: linear-gradient(rgba(217, 168, 255, 0.055) 1px, transparent 1px), linear-gradient(90deg, rgba(217, 168, 255, 0.045) 1px, transparent 1px); background-size: 100% 25%, 20% 100%; opacity: 0.7; }
+.vis-data .bar { position: relative; z-index: 2; flex: 1; max-width: 30px; height: var(--h); border-radius: 8px 8px 3px 3px; background: linear-gradient(180deg, #d9a8ff, #a344f3 45%, #6f249e38); box-shadow: inset 0 1px #ffffff3d, 0 0 20px #a344f314; transform-origin: bottom center; animation: barGrow 2.8s ease-in-out infinite alternate; }
+.vis-data .bar:nth-child(2) { animation-delay: 0.2s; }
+.vis-data .bar:nth-child(3) { animation-delay: 0.4s; }
+.vis-data .bar:nth-child(4) { animation-delay: 0.6s; }
+.vis-data .bar:nth-child(5) { animation-delay: 0.8s; }
+.vis-data .trend { position: absolute; z-index: 3; left: 38px; right: 18px; top: 42%; height: 2px; background: linear-gradient(90deg, #d9a8ff26, #fff9ff, #c13eff); transform: rotate(-11deg); transform-origin: left center; box-shadow: 0 0 12px #c13eff6b; }
+.vis-data .trend-pulse { position: absolute; width: 8px; height: 8px; border-radius: 50%; top: 50%; left: 0; transform: translate(-50%, -50%); background: #fff9ff; box-shadow: 0 0 16px 4px #c13eff70; }
+.vis-data .data-source { position: absolute; z-index: 5; left: 1%; width: 52px; height: 26px; border-radius: 8px; display: grid; place-items: center; font: 600 0.42rem/1 "JetBrains Mono", monospace; letter-spacing: 0.08em; color: #d9a8ff; border: 1px solid rgba(217, 168, 255, 0.14); background: #110719c7; }
+.vis-data .ds1 { top: 10%; }
+.vis-data .ds2 { top: 44%; }
+.vis-data .ds3 { top: 78%; }
+.vis-data .data-stream { position: absolute; left: 14%; top: 50%; width: 54px; height: 80px; }
+.vis-data .data-stream i { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #c77dff; box-shadow: 0 0 10px #c13eff80; }
+.vis-data .data-stream i:nth-child(1) { top: 5%; left: 0; }
+.vis-data .data-stream i:nth-child(2) { top: 34%; left: 20%; }
+.vis-data .data-stream i:nth-child(3) { top: 62%; left: 8%; }
+.vis-data .data-stream i:nth-child(4) { top: 84%; left: 30%; }
+.vis-data .data-metric { position: absolute; z-index: 4; padding: 5px 8px; border-radius: 7px; font: 600 0.42rem/1 "JetBrains Mono", monospace; color: #fff9ff; background: #c13eff1f; border: 1px solid rgba(217, 168, 255, 0.15); }
+.vis-data .dm1 { right: 12px; top: 12px; }
+.vis-data .dm2 { right: 12px; bottom: 10px; }
+
+/* API & Integrations */
+.vis-api .endpoint { position: absolute; width: 96px; height: 78px; border-radius: 18px; display: grid; place-items: center; font-size: 0.6rem; letter-spacing: 0.06em; color: #f5ecfa; }
+.vis-api .left { left: 6%; }
+.vis-api .right { right: 6%; }
+.vis-api .bridge { position: absolute; width: 46%; height: 1px; background: linear-gradient(90deg, #a344f3, #d9a8ff, #a344f3); }
+.vis-api .api-p1, .vis-api .api-p2 { top: 50%; left: 27%; animation: apiMove 2.3s linear infinite; }
+.vis-api .api-p2 { animation-delay: 1.1s; }
+.vis-api .api-code { font-family: "JetBrains Mono", monospace; color: #d9a8ff; font-size: 0.68rem; opacity: 0.8; }
+
+/* UI/UX & Product Design */
+.vis-uiux { perspective: 900px; gap: 26px; }
+.vis-uiux .ux-frame { position: relative; width: 40%; max-width: 180px; height: 68%; max-height: 200px; border-radius: 18px; padding: 13px; transition: 0.4s; }
+.vis-uiux .wire { transform: rotateY(13deg) translateZ(-20px); border-style: dashed; opacity: 0.7; }
+.vis-uiux .polished { transform: rotateY(-9deg); animation: uiPolish 4.5s ease-in-out infinite; }
+.vis-uiux .ux-top { height: 12%; border-radius: 7px; background: #d9a8ff1c; margin-bottom: 8px; }
+.vis-uiux .ux-hero { height: 35%; border-radius: 10px; background: linear-gradient(135deg, #c13eff3d, #d9a8ff0d); margin-bottom: 8px; }
+.vis-uiux .ux-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.vis-uiux .ux-card { height: 44px; border-radius: 9px; background: #d9a8ff12; }
+.vis-uiux .wire .ux-top, .vis-uiux .wire .ux-hero, .vis-uiux .wire .ux-card { background: transparent; border: 1px solid rgba(217, 168, 255, 0.25); }
+.vis-uiux .ux-arrow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #d9a8ff; font-size: 1.3rem; text-shadow: 0 0 14px #c13eff; animation: uxArrow 1.6s ease-in-out infinite; }
+.vis-uiux .cursor-dot { position: absolute; width: 10px; height: 10px; border: 2px solid #fff9ff; border-radius: 50%; right: 14%; top: 22%; box-shadow: 0 0 12px #c13eff; animation: cursorPath 4.5s ease-in-out infinite; }
+
+/* DevOps */
+.vis-devops { perspective: 950px; }
+.vis-devops .pipe-ring { position: absolute; left: 50%; top: 44%; width: 210px; height: 210px; margin: -105px 0 0 -105px; border: 1px solid rgba(199, 125, 255, 0.22); border-radius: 50%; animation: orbitSpin 18s linear infinite; }
+.vis-devops .pipe-core { position: absolute; left: 50%; top: 44%; width: 76px; height: 76px; margin: -38px 0 0 -38px; border-radius: 50%; display: grid; place-items: center; font: 600 0.57rem/1 "JetBrains Mono", monospace; color: #f5ecfa; letter-spacing: 0.08em; background: linear-gradient(145deg, #c13eff38, #13081cc7); border: 1px solid rgba(217, 168, 255, 0.4); }
+.vis-devops .pipe-node { position: absolute; left: 50%; top: 44%; width: 54px; height: 30px; margin: -15px 0 0 -27px; border-radius: 9px; display: grid; place-items: center; font: 500 0.46rem/1 "JetBrains Mono", monospace; color: #d9cbe2; background: #c13eff14; border: 1px solid rgba(217, 168, 255, 0.14); }
+.vis-devops .p1 { transform: translateY(-105px); }
+.vis-devops .p2 { transform: translate(72px, -72px); }
+.vis-devops .p3 { transform: translate(72px, 72px); }
+.vis-devops .p4 { transform: translate(-72px, 72px); }
+.vis-devops .p5 { transform: translate(-72px, -72px); }
+.vis-devops .devops-track { position: absolute; left: 3%; right: 3%; bottom: 3%; height: 52px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; }
+.vis-devops .dev-stage { position: relative; z-index: 3; text-align: center; opacity: 0.42; }
+.vis-devops .dev-stage b { display: block; font: 600 0.4rem/1 "JetBrains Mono", monospace; color: #d9a8ff; }
+.vis-devops .dev-stage small { display: block; margin-top: 4px; font: 0.35rem/1 "JetBrains Mono", monospace; color: #816c91; }
+.vis-devops .dev-flow-line { position: absolute; z-index: 1; left: 9%; right: 9%; top: 50%; height: 1px; background: linear-gradient(90deg, #6f249e, #a344f3, #d9a8ff, #a344f3, #6f249e); }
+.vis-devops .dev-packet { position: absolute; z-index: 4; left: 9%; top: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); background: #fff9ff; box-shadow: 0 0 16px 4px #c13eff80; animation: devPacket 3.2s ease-in-out infinite; }
+
+/* Cybersecurity */
+.vis-security .sec-ring { position: absolute; width: 220px; height: 220px; border-radius: 50%; border: 1px dashed rgba(199, 125, 255, 0.16); animation: orbitSpin 15s linear infinite; }
+.vis-security .sec-ring i { position: absolute; inset: 16px; border-radius: 50%; border: 1px solid rgba(217, 168, 255, 0.08); }
+.vis-security .sec-ring i:nth-child(2) { inset: 34px; }
+.vis-security .sec-ring i:nth-child(3) { inset: 54px; }
+.vis-security .shield { position: relative; width: 142px; height: 168px; clip-path: polygon(50% 0, 88% 17%, 84% 68%, 50% 100%, 16% 68%, 12% 17%); display: grid; place-items: center; background: linear-gradient(145deg, #c13eff33, #110719d1); border: 1px solid rgba(217, 168, 255, 0.4); filter: drop-shadow(0 0 26px rgba(193, 62, 255, 0.18)); }
+.vis-security .shield:before { content: ""; width: 60px; height: 60px; border-radius: 50%; border: 1px solid rgba(217, 168, 255, 0.32); box-shadow: inset 0 0 22px #c13eff1f; }
+.vis-security .shield-lock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff9ff; background: #c13eff1f; opacity: 1; }
+.vis-security .scan { position: absolute; left: 24%; right: 24%; height: 1px; background: #f3dfff; box-shadow: 0 0 16px #c13eff; animation: scanShield 2.6s ease-in-out infinite; }
+.vis-security .security-request { position: absolute; z-index: 4; width: 50px; height: 25px; border-radius: 8px; display: grid; place-items: center; font: 600 0.4rem/1 "JetBrains Mono", monospace; color: #d9a8ff; border: 1px solid rgba(217, 168, 255, 0.13); background: #110719d1; }
+.vis-security .sr1 { left: 1%; top: 22%; }
+.vis-security .sr2 { left: 1%; top: 44%; }
+.vis-security .sr3 { left: 1%; top: 66%; }
+.vis-security .security-packet { position: absolute; z-index: 6; left: 15%; top: 24%; width: 7px; height: 7px; border-radius: 50%; background: #c77dff; box-shadow: 0 0 12px #c13eff80; animation: securityPacket 2.4s linear infinite; }
+.vis-security .sp2 { top: 46%; animation-delay: 0.8s; }
+.vis-security .threat-packet { top: 68%; background: #c866c8; box-shadow: 0 0 14px #c866c8b3; animation-delay: 1.6s; }
+.vis-security .security-status { position: absolute; z-index: 6; right: 1%; top: 50%; transform: translateY(-50%); font: 600 0.42rem/1 "JetBrains Mono", monospace; letter-spacing: 0.12em; color: #d9a8ff; opacity: 0.55; }
+
+/* Quality Engineering */
+.vis-qa .qa-panel { width: 88%; max-width: 320px; border-radius: 18px; padding: 15px 16px 16px; position: relative; }
+.vis-qa .qa-head { height: 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(217, 168, 255, 0.09); margin-bottom: 2px; }
+.vis-qa .qa-head b { font: 600 0.44rem/1 "JetBrains Mono", monospace; letter-spacing: 0.1em; color: #d9a8ff; }
+.vis-qa .qa-counter { font: 500 0.42rem/1 "JetBrains Mono", monospace; color: #8d7896; }
+.vis-qa .qa-row { height: 32px; border-bottom: 1px solid rgba(217, 168, 255, 0.055); display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 9px; color: #d9cbe2; font-size: 0.54rem; }
+.vis-qa .qa-row b { font-weight: 500; }
+.vis-qa .qa-row em { font: 500 0.38rem/1 "JetBrains Mono", monospace; color: #7f6b8a; font-style: normal; letter-spacing: 0.08em; }
+.vis-qa .qa-check { position: relative; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(217, 168, 255, 0.24); display: grid; place-items: center; }
+.vis-qa .qa-check:after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 0.48rem; color: #f3dfff; opacity: 0; animation: qaCheck 4s infinite; }
+.vis-qa .qa-row:nth-child(2) .qa-check:after { animation-delay: 0.6s; }
+.vis-qa .qa-row:nth-child(3) .qa-check:after { animation-delay: 1.2s; }
+.vis-qa .qa-row:nth-child(4) .qa-check:after { animation-delay: 1.8s; }
+.vis-qa .qa-row:nth-child(5) .qa-check:after { animation-delay: 2.4s; }
+.vis-qa .qa-progress { height: 2px; margin-top: 11px; background: #d9a8ff12; overflow: hidden; border-radius: 4px; }
+.vis-qa .qa-progress i { display: block; width: 100%; height: 100%; transform-origin: left center; background: linear-gradient(90deg, #6f249e, #c13eff, #d9a8ff); animation: qaProgress 4s ease-in-out infinite; }
+
+/* Digital Transformation */
+.vis-digital .legacy, .vis-digital .smart { position: absolute; width: 34%; max-width: 150px; height: 60%; max-height: 170px; border-radius: 18px; padding: 14px; }
+.vis-digital .legacy { left: 4%; opacity: 0.58; filter: saturate(0.65); }
+.vis-digital .smart { right: 4%; box-shadow: 0 0 34px #c13eff1f; }
+.vis-digital .d-block { height: 22px; border-radius: 7px; margin: 7px 0; background: #d9a8ff12; border: 1px solid rgba(217, 168, 255, 0.09); }
+.vis-digital .legacy .d-block { background: #ffffff06; }
+.vis-digital .smart .d-block { background: linear-gradient(90deg, #c13eff2e, #d9a8ff0b); animation: dSmart 3s ease-in-out infinite alternate; }
+.vis-digital .d-arrow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #f3dfff; font-size: 1.4rem; text-shadow: 0 0 18px #c13eff; }
+.vis-digital .d-packet { left: 46%; top: 50%; animation: dPacket 2.6s ease-in-out infinite; }
+
+@keyframes aiCore { 50% { transform: translate(-50%, -50%) rotate(225deg) scale(1.05); } }
+@keyframes orbitSpin { to { transform: rotate(360deg); } }
+@keyframes webFloat { 50% { transform: perspective(700px) rotateY(3deg) rotateX(1deg) translateY(-5px); } }
+@keyframes webPulse { 50% { background: #c77dff1f; } }
+@keyframes phoneFloat { 50% { transform: rotate(2deg) translateY(-7px); } }
+@keyframes cloudFloat { 50% { transform: translateY(-8px); } }
+@keyframes packetCloud { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } to { transform: translate(50px, -60px); opacity: 0; } }
+@keyframes barGrow { 0% { transform: scaleY(0.55); } to { transform: scaleY(1); } }
+@keyframes apiMove { 0% { transform: translate(0); opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { transform: translate(120px); opacity: 0; } }
+@keyframes uiPolish { 50% { transform: rotateY(-2deg) translateY(-5px) scale(1.02); } }
+@keyframes uxArrow { 50% { transform: translate(-42%, -50%); } }
+@keyframes cursorPath { 25% { right: 24%; top: 40%; } 50% { right: 44%; top: 62%; } 75% { right: 30%; top: 48%; } }
+@keyframes scanShield { 0%, to { top: 22%; opacity: 0.2; } 50% { top: 66%; opacity: 1; } }
+@keyframes devPacket { 0% { left: 9%; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } to { left: 91%; opacity: 0; } }
+@keyframes securityPacket { 0% { transform: translateX(0); opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } to { transform: translateX(160px); opacity: 0; } }
+@keyframes qaCheck { 0%, 18% { opacity: 0; transform: scale(0.4); } 25%, 78% { opacity: 1; transform: scale(1); } to { opacity: 0; } }
+@keyframes qaProgress { 0% { transform: scaleX(0); } 60%, 100% { transform: scaleX(1); } }
+@keyframes dPacket { 0% { transform: translate(0); opacity: 0; } 20% { opacity: 1; } to { transform: translate(50px); opacity: 0; } }
+@keyframes dSmart { to { box-shadow: 0 0 14px #c13eff1a; } }
+
+@media (max-width: 640px) {
+  .sd-visual { min-height: 220px; transform: scale(0.82); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sd-visual * { animation: none !important; }
+}

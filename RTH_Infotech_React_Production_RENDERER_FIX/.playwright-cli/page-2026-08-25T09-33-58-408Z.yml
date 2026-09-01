@@ -1,0 +1,154 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: INITIALIZING RTH AI
+  - generic:
+    - generic:
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{ \""
+      - generic: JSON • LIVE DATA
+      - generic: JSON • LIVE DATA
+      - generic: JSON • LIVE DATA
+  - link "RTH Infotech home" [ref=e6] [cursor=pointer]:
+    - /url: /
+    - img "RTH Infotech" [ref=e7]
+  - main [ref=e8]:
+    - link "Back to RTH Infotech home" [ref=e9] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e12]: BACK TO HOME
+    - generic [ref=e13]:
+      - generic [ref=e14]:
+        - generic [ref=e15]: RTH Intelligence Layer
+        - heading "SYSTEMS ENGINEERED AROUND YOUR BUSINESS" [level=1] [ref=e16]: SYSTEMS ENGINEEREDAROUND YOUR BUSINESS
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: ☝
+          - generic [ref=e20]:
+            - generic [ref=e21]: CLICK / TAP ANY SERVICE
+            - generic [ref=e22]: TO EXPLORE THE SYSTEM
+        - generic [ref=e23]:
+          - generic [ref=e34]:
+            - button "Explore Quality Engineering" [ref=e35] [cursor=pointer]:
+              - generic [ref=e41]:
+                - generic [ref=e42]: Quality
+                - text: Engineering
+            - button "Explore UI/UX & Product Design" [ref=e43] [cursor=pointer]:
+              - generic [ref=e49]:
+                - generic [ref=e50]: UI/UX &
+                - text: Product Design
+            - button "Explore API & Integrations" [ref=e51] [cursor=pointer]:
+              - generic [ref=e60]:
+                - generic [ref=e61]: API &
+                - text: Integrations
+            - button "Explore Mobile Applications" [ref=e63] [cursor=pointer]:
+              - generic [ref=e68]:
+                - generic [ref=e69]: Mobile
+                - text: Applications
+            - button "Explore Cloud & Infrastructure" [ref=e70] [cursor=pointer]:
+              - generic [ref=e84]:
+                - generic [ref=e85]: Cloud &
+                - text: Infrastructure
+            - button "Explore Cybersecurity" [ref=e87] [cursor=pointer]:
+              - generic [ref=e88]: Cybersecurity
+            - button "Explore DevOps" [ref=e94] [cursor=pointer]:
+              - generic [ref=e95]: DevOps
+            - button "Explore Data & Analytics" [ref=e100] [cursor=pointer]:
+              - generic [ref=e106]:
+                - generic [ref=e107]: Data &
+                - text: Analytics
+            - button "Explore Digital Transformation" [ref=e108] [cursor=pointer]:
+              - generic [ref=e115]:
+                - generic [ref=e116]: Digital
+                - text: Transformation
+            - button "Explore Enterprise Software" [ref=e117] [cursor=pointer]:
+              - generic [ref=e125]:
+                - generic [ref=e126]: Enterprise
+                - text: Software
+            - button "Explore AI & Automation" [ref=e127] [cursor=pointer]:
+              - generic [ref=e143]:
+                - generic [ref=e144]: AI &
+                - text: Automation
+            - button "Explore Web Engineering" [ref=e145] [cursor=pointer]:
+              - generic [ref=e150]:
+                - generic [ref=e151]: Web
+                - text: Engineering
+          - generic [ref=e152]:
+            - paragraph [ref=e155]: INTELLIGENCECORE
+            - strong [ref=e156]: AI & AUTOMATION
+            - generic [ref=e157]: SYSTEM ONLINE
+    - generic [ref=e159]:
+      - link "01 Quality Engineering Testing practices that catch problems before your customers do. Build → Verified Release →" [ref=e160] [cursor=pointer]:
+        - /url: /services/quality-engineering
+        - text: "01"
+        - heading "Quality Engineering" [level=2] [ref=e161]
+        - paragraph [ref=e162]: Testing practices that catch problems before your customers do.
+        - generic [ref=e163]: Build → Verified Release →
+      - link "02 UI/UX & Product Design Design systems and product interfaces built for clarity and real usage. Research → Polished Product →" [ref=e164] [cursor=pointer]:
+        - /url: /services/ui-ux
+        - text: "02"
+        - heading "UI/UX & Product Design" [level=2] [ref=e165]
+        - paragraph [ref=e166]: Design systems and product interfaces built for clarity and real usage.
+        - generic [ref=e167]: Research → Polished Product →
+      - link "03 API & Integrations Reliable, well-documented integrations connecting the systems you already run. System A ↔ System B →" [ref=e168] [cursor=pointer]:
+        - /url: /services/api-integrations
+        - text: "03"
+        - heading "API & Integrations" [level=2] [ref=e169]
+        - paragraph [ref=e170]: Reliable, well-documented integrations connecting the systems you already run.
+        - generic [ref=e171]: System A ↔ System B →
+      - link "04 Mobile Applications iOS, Android, and cross-platform apps engineered for performance and scale. Idea → App →" [ref=e172] [cursor=pointer]:
+        - /url: /services/mobile-applications
+        - text: "04"
+        - heading "Mobile Applications" [level=2] [ref=e173]
+        - paragraph [ref=e174]: iOS, Android, and cross-platform apps engineered for performance and scale.
+        - generic [ref=e175]: Idea → App →
+      - link "05 Cloud & Infrastructure Cloud architecture designed for reliability, scale, and controlled cost. Infrastructure → Scale →" [ref=e176] [cursor=pointer]:
+        - /url: /services/cloud-infrastructure
+        - text: "05"
+        - heading "Cloud & Infrastructure" [level=2] [ref=e177]
+        - paragraph [ref=e178]: Cloud architecture designed for reliability, scale, and controlled cost.
+        - generic [ref=e179]: Infrastructure → Scale →
+      - link "06 Cybersecurity Security practices built into development — engineering capability, not certification claims. Attack Surface → Defense →" [ref=e180] [cursor=pointer]:
+        - /url: /services/cybersecurity
+        - text: "06"
+        - heading "Cybersecurity" [level=2] [ref=e181]
+        - paragraph [ref=e182]: Security practices built into development — engineering capability, not certification claims.
+        - generic [ref=e183]: Attack Surface → Defense →
+      - link "07 DevOps CI/CD and infrastructure practices that make releases routine, not risky. Commit → Production →" [ref=e184] [cursor=pointer]:
+        - /url: /services/devops
+        - text: "07"
+        - heading "DevOps" [level=2] [ref=e185]
+        - paragraph [ref=e186]: CI/CD and infrastructure practices that make releases routine, not risky.
+        - generic [ref=e187]: Commit → Production →
+      - link "08 Data & Analytics Turn raw data into dashboards and pipelines that answer real business questions. Raw Data → Decisions →" [ref=e188] [cursor=pointer]:
+        - /url: /services/data-analytics
+        - text: "08"
+        - heading "Data & Analytics" [level=2] [ref=e189]
+        - paragraph [ref=e190]: Turn raw data into dashboards and pipelines that answer real business questions.
+        - generic [ref=e191]: Raw Data → Decisions →
+      - link "09 Digital Transformation A path from manual, fragmented operations to a connected digital business. Manual → Intelligent Operations →" [ref=e192] [cursor=pointer]:
+        - /url: /services/digital-transformation
+        - text: "09"
+        - heading "Digital Transformation" [level=2] [ref=e193]
+        - paragraph [ref=e194]: A path from manual, fragmented operations to a connected digital business.
+        - generic [ref=e195]: Manual → Intelligent Operations →
+      - link "10 Enterprise Software Custom systems that unify how your business operates across departments. Departments → One System →" [ref=e196] [cursor=pointer]:
+        - /url: /services/enterprise-software
+        - text: "10"
+        - heading "Enterprise Software" [level=2] [ref=e197]
+        - paragraph [ref=e198]: Custom systems that unify how your business operates across departments.
+        - generic [ref=e199]: Departments → One System →
+      - link "11 AI & Automation Automation engineered around real business operations — from a single agent to a full intelligence layer. Intelligence → Action →" [ref=e200] [cursor=pointer]:
+        - /url: /services/ai-automation
+        - text: "11"
+        - heading "AI & Automation" [level=2] [ref=e201]
+        - paragraph [ref=e202]: Automation engineered around real business operations — from a single agent to a full intelligence layer.
+        - generic [ref=e203]: Intelligence → Action →
+      - link "12 Web Engineering Web applications and platforms built to hold up under real traffic and real business logic. Interface → Platform →" [ref=e204] [cursor=pointer]:
+        - /url: /services/web-engineering
+        - text: "12"
+        - heading "Web Engineering" [level=2] [ref=e205]
+        - paragraph [ref=e206]: Web applications and platforms built to hold up under real traffic and real business logic.
+        - generic [ref=e207]: Interface → Platform →
+  - contentinfo [ref=e208]:
+    - generic [ref=e209]: © 2026 RTH Infotech Pvt Ltd
+    - generic [ref=e210]: Chennai, India
+  - button "Open RTH AI assistant" [ref=e211] [cursor=pointer]

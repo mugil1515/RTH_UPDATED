@@ -1,0 +1,45 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: INITIALIZING RTH AI
+  - generic:
+    - generic:
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{"
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{"
+      - generic: JSON • LIVE DATA
+      - generic: JSON • LIVE DATA
+  - link "RTH Infotech home" [ref=e6] [cursor=pointer]:
+    - /url: /
+    - img "RTH Infotech" [ref=e7]
+  - main [ref=e8]:
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - generic [ref=e13]: Let's Build
+        - heading "READY TO AUTOMATE YOUR BUSINESS?" [level=2] [ref=e14]: READY TO AUTOMATEYOUR BUSINESS?
+      - generic [ref=e15]:
+        - generic [ref=e16]:
+          - generic [ref=e17]: Name
+          - textbox "Name" [ref=e18]:
+            - /placeholder: Your name
+        - generic [ref=e19]:
+          - generic [ref=e20]: Company
+          - textbox "Company" [ref=e21]:
+            - /placeholder: Company name
+        - generic [ref=e22]:
+          - generic [ref=e23]: Email
+          - textbox "Email" [ref=e24]:
+            - /placeholder: you@company.com
+        - generic [ref=e25]:
+          - generic [ref=e26]: What would you like to automate?
+          - textbox "What would you like to automate?" [ref=e27]:
+            - /placeholder: Tell us about the manual process...
+        - button "START WITH RTH" [ref=e28] [cursor=pointer]
+      - generic [ref=e29]:
+        - text: RTH INFOTECH PVT LTD
+        - heading "AI THAT RUNS YOUR BUSINESS." [level=3] [ref=e30]
+  - contentinfo [ref=e31]:
+    - generic [ref=e32]: © 2026 RTH Infotech Pvt Ltd
+    - generic [ref=e33]: Chennai, India
+  - button "Open RTH AI assistant" [ref=e34] [cursor=pointer]
