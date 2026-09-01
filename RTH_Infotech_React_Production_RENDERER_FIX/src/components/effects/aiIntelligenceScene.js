@@ -23,16 +23,29 @@
 import * as THREE from "three";
 import { SimplexNoise } from "three/examples/jsm/math/SimplexNoise.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import { buildAIHumanoidHead } from "@/components/effects/ai3d/aiHumanoidHead";
+import {
+  buildSecurityNode,
+  buildPredictionNode,
+  buildCoreLinks,
+  buildMicroField,
+} from "@/components/effects/ai3d/aiModules";
 
+// Light-theme inks. On a bright studio ground every "glow" has to be DARKER
+// than the background to be visible at all, so the old near-white highlights
+// became orange inks and the shells became white ceramic / polished titanium.
 const COL = {
-  deep: 0x110017,
-  violet: 0x7c2cff,
-  electric: 0xa855f7,
-  magenta: 0xd946ef,
-  lavender: 0xc084fc,
-  white: 0xf3e8ff,
+  ceramic: 0xe8e7e5,
+  titanium: 0x9fa0a2,
+  orange: 0xeb6217,        // exact RTH logo orange
+  ember: 0xf7853f,         // lighter energy
+  deepOrange: 0xc2410c,    // denser accent
+  amber: 0xd2540e,
+  glow: 0xb8480a,          // brightest ink; must read against white
 };
-const ADD = THREE.AdditiveBlending;
+// Additive blending is invisible against white (light + white = white), so the
+// glow layers now composite with ordinary alpha blending.
+const GLOW = THREE.NormalBlending;
 const _v3 = new THREE.Vector3();
 
 /* ----------------------------------------------------------------------------
@@ -49,13 +62,13 @@ function makeCanvas(w, h) {
   return { canvas, ctx, tex };
 }
 
-function labelSprite(text, { size = 30, color = "#c084fc", opacity = 0.5 } = {}) {
+function labelSprite(text, { size = 30, color = "#eb6217", opacity = 0.5 } = {}) {
   const { canvas, ctx, tex } = makeCanvas(256, 64);
   ctx.font = `600 ${size}px "Courier New", monospace`;
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.shadowColor = color;
-  ctx.shadowBlur = 14;
+  ctx.shadowBlur = 6;
   ctx.fillStyle = color;
   ctx.fillText(text, canvas.width / 2, canvas.height / 2);
   tex.needsUpdate = true;
@@ -64,7 +77,7 @@ function labelSprite(text, { size = 30, color = "#c084fc", opacity = 0.5 } = {})
     transparent: true,
     opacity,
     depthWrite: false,
-    blending: ADD,
+    blending: GLOW,
   }));
   sprite.scale.set(0.9, 0.225, 1);
   return sprite;
@@ -78,8 +91,8 @@ function labelSprite(text, { size = 30, color = "#c084fc", opacity = 0.5 } = {})
  *          fissure; the two hemispheres are one connected surface.
  *      L2/3 dense gyrification (domain-warped ridged simplex noise) displacing
  *          that surface into gyri + sulci, offset per hemisphere for asymmetry;
- *          baked vertex colours run near-black-violet in the sulci to bright
- *          lavender on the gyral crowns, so the anatomy reads with every light
+ *          baked vertex colours run mid-grey in the sulci to near-white
+ *          on the gyral crowns, so the anatomy reads with every light
  *          and glow turned off.
  *      L4  a light neural layer — nodes on gyral crowns, thin paths, a few
  *          travelling signals — plus cerebellum, brain stem and the energy disc.
@@ -178,9 +191,9 @@ function buildBrain(mobile) {
   const simplex = new SimplexNoise({ random: rand });
   const field = makeBrainField(simplex, mobile);
 
-  const cDeep = new THREE.Color(0x120421);
-  const cMid = new THREE.Color(0x4c1d95);
-  const cGyrus = new THREE.Color(0x8b5cf6);
+  const cDeep = new THREE.Color(0x9a9793);
+  const cMid = new THREE.Color(0xcdcac6);
+  const cGyrus = new THREE.Color(0xf7f6f4);
   const tmpC = new THREE.Color();
 
   // shared brain material — semi-solid, sculptural, faint internal glow
@@ -193,7 +206,7 @@ function buildBrain(mobile) {
     transmission: 0.15,
     thickness: 0.5,
     ior: 1.4,
-    emissive: 0x24084a,
+    emissive: 0xf08a45,
     emissiveIntensity: 0.16,
   });
 
@@ -253,8 +266,8 @@ function buildBrain(mobile) {
   }
   stemGeo.computeVertexNormals();
   const stemMat = new THREE.MeshPhysicalMaterial({
-    color: 0x3a1470, roughness: 0.42, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.3,
-    emissive: 0x180733, emissiveIntensity: 0.2,
+    color: 0xc0bcb7, roughness: 0.42, metalness: 0.15, clearcoat: 0.6, clearcoatRoughness: 0.3,
+    emissive: 0xf08a45, emissiveIntensity: 0.12,
   });
   const stem = new THREE.Mesh(stemGeo, stemMat);
   stem.position.set(0, -0.52, -0.06);
@@ -262,7 +275,7 @@ function buildBrain(mobile) {
   inner.add(stem);
 
   // ---- L4: neural nodes on gyral crowns ---------------------------------
-  const palette = [0x8b5cf6, 0xa855f7, 0xc084fc, 0xd946ef];
+  const palette = [0xeb6217, 0xd2540e, 0xf7853f, 0xc2410c];
   const nodePts = [];
   for (let tries = 0; tries < 400 && nodePts.length < (mobile ? 16 : 22); tries += 1) {
     dir.set(rand() * 2 - 1, rand() * 2 - 1, rand() * 2 - 1);
@@ -272,7 +285,7 @@ function buildBrain(mobile) {
     if (g > 0.62 && dir.y > -0.35) nodePts.push(pt.clone().multiplyScalar(1.008));
   }
   const nodeGeo = new THREE.SphereGeometry(0.018, 7, 7);
-  const nodeMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9, blending: ADD, depthWrite: false });
+  const nodeMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9, blending: GLOW, depthWrite: false });
   const dimNodes = new THREE.InstancedMesh(nodeGeo, nodeMat, nodePts.length);
   const m4 = new THREE.Matrix4();
   nodePts.forEach((p, i) => {
@@ -288,7 +301,7 @@ function buildBrain(mobile) {
     const p = nodePts[(rand() * nodePts.length) | 0];
     const n = new THREE.Mesh(
       new THREE.SphereGeometry(0.028, 10, 10),
-      new THREE.MeshBasicMaterial({ color: palette[i % palette.length], transparent: true, opacity: 0.9, blending: ADD, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: palette[i % palette.length], transparent: true, opacity: 0.9, blending: GLOW, depthWrite: false }),
     );
     n.position.copy(p);
     brightNodes.push(n);
@@ -296,7 +309,7 @@ function buildBrain(mobile) {
   }
 
   // ---- L4: thin glowing neural paths + travelling signals ----------------
-  const pathMat = new THREE.LineBasicMaterial({ color: 0x9d6bff, transparent: true, opacity: 0.2, blending: ADD, depthWrite: false });
+  const pathMat = new THREE.LineBasicMaterial({ color: COL.orange, transparent: true, opacity: 0.28, blending: GLOW, depthWrite: false });
   const pathSegs = [];
   const paths = [];
   for (let i = 0; i < (mobile ? 4 : 7) && nodePts.length > 3; i += 1) {
@@ -315,7 +328,7 @@ function buildBrain(mobile) {
   for (let i = 0; i < (mobile ? 3 : 5) && paths.length; i += 1) {
     const s = new THREE.Mesh(
       new THREE.SphereGeometry(0.022, 8, 8),
-      new THREE.MeshBasicMaterial({ color: COL.white, transparent: true, opacity: 0.95, blending: ADD, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: COL.glow, transparent: true, opacity: 0.95, blending: GLOW, depthWrite: false }),
     );
     s.userData = { path: paths[i % paths.length], t: rand(), speed: 0.3 + rand() * 0.35 };
     signals.push(s);
@@ -329,23 +342,23 @@ function buildBrain(mobile) {
     const curve = new THREE.EllipseCurve(0, 0, rr, rr, 0, Math.PI * 2);
     const dg = new THREE.BufferGeometry().setFromPoints(curve.getPoints(80).map((p) => new THREE.Vector3(p.x, 0, p.y)));
     disc.add(new THREE.LineLoop(dg, new THREE.LineBasicMaterial({
-      color: COL.electric, transparent: true, opacity: 0.32 - i * 0.045, blending: ADD, depthWrite: false,
+      color: COL.ember, transparent: true, opacity: 0.32 - i * 0.045, blending: GLOW, depthWrite: false,
     })));
   }
   const discGlow = new THREE.Mesh(
     new THREE.CircleGeometry(0.32, 28),
-    new THREE.MeshBasicMaterial({ color: COL.magenta, transparent: true, opacity: 0.5, blending: ADD, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: COL.ember, transparent: true, opacity: 0.2, blending: GLOW, depthWrite: false }),
   );
   discGlow.rotation.x = -Math.PI / 2;
   disc.add(discGlow);
   disc.position.y = -1.0;
   group.add(disc);
 
-  // ---- brain-local shading: soft key from upper-front-left + violet rim --
-  const keyLight = new THREE.PointLight(0xe3d4ff, 2.4, 10, 2);
+  // ---- brain-local shading: soft key from upper-front-left + warm rim ----
+  const keyLight = new THREE.PointLight(0xffffff, 0.8, 10, 2);
   keyLight.position.set(-1.7, 1.9, 2.1);
   group.add(keyLight);
-  const rimLight = new THREE.PointLight(0xd946ef, 1.5, 8, 2);
+  const rimLight = new THREE.PointLight(0xf7853f, 0.55, 8, 2);
   rimLight.position.set(0.8, 0.5, -2.4);
   group.add(rimLight);
 
@@ -374,7 +387,7 @@ function updateBrain(b, t, dt) {
   });
 
   b.disc.rotation.y += dt * 0.14;
-  b.discGlow.material.opacity = 0.32 + Math.abs(Math.sin(t * 1.3)) * 0.32;
+  b.discGlow.material.opacity = 0.12 + Math.abs(Math.sin(t * 1.3)) * 0.12;
 }
 
 /* ----------------------------------------------------------------------------
@@ -388,7 +401,7 @@ function buildRingExtras(mobile) {
   [[2.9, 0.9, 0.2], [3.35, -0.5, 1.1]].forEach(([rad, rx, ry]) => {
     const curve = new THREE.EllipseCurve(0, 0, rad, rad, 0, Math.PI * 2);
     const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(140).map((p) => new THREE.Vector3(p.x, p.y, 0)));
-    const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: COL.lavender, transparent: true, opacity: 0.22, blending: ADD, depthWrite: false }));
+    const line = new THREE.LineLoop(geo, new THREE.LineBasicMaterial({ color: COL.amber, transparent: true, opacity: 0.22, blending: GLOW, depthWrite: false }));
     line.rotation.set(rx, ry, 0);
     extra.push(line);
     group.add(line);
@@ -407,7 +420,7 @@ function buildRingExtras(mobile) {
   for (let i = 0; i < (mobile ? 4 : 8); i += 1) {
     const idx = i % planes.length;
     const s = new THREE.Mesh(lightGeo, new THREE.MeshBasicMaterial({
-      color: i % 2 ? COL.magenta : COL.electric, transparent: true, opacity: 0.95, blending: ADD, depthWrite: false,
+      color: i % 2 ? COL.deepOrange : COL.ember, transparent: true, opacity: 0.95, blending: GLOW, depthWrite: false,
     }));
     s.userData = {
       r: radii[idx],
@@ -448,17 +461,17 @@ function buildChip() {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(
     new THREE.BoxGeometry(0.5, 0.5, 0.12),
-    new THREE.MeshPhysicalMaterial({ color: 0x1c0b33, metalness: 0.78, roughness: 0.22, clearcoat: 1, clearcoatRoughness: 0.12 }),
+    new THREE.MeshPhysicalMaterial({ color: 0xe0dedb, metalness: 0.25, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.12 }),
   ));
   const die = new THREE.Mesh(
     new THREE.BoxGeometry(0.26, 0.26, 0.13),
-    new THREE.MeshStandardMaterial({ color: 0x2a1140, emissive: COL.violet, emissiveIntensity: 0.7, roughness: 0.3, metalness: 0.4 }),
+    new THREE.MeshStandardMaterial({ color: 0xfff1e7, emissive: COL.orange, emissiveIntensity: 0.7, roughness: 0.3, metalness: 0.4 }),
   );
   g.add(die);
 
   const pins = new THREE.InstancedMesh(
     new THREE.BoxGeometry(0.05, 0.09, 0.03),
-    new THREE.MeshStandardMaterial({ color: COL.lavender, metalness: 0.9, roughness: 0.3, emissive: COL.electric, emissiveIntensity: 0.15 }),
+    new THREE.MeshStandardMaterial({ color: COL.titanium, metalness: 0.9, roughness: 0.3, emissive: COL.ember, emissiveIntensity: 0.12 }),
     24,
   );
   const mm = new THREE.Matrix4();
@@ -477,7 +490,7 @@ function buildChip() {
   pins.instanceMatrix.needsUpdate = true;
   g.add(pins);
 
-  const label = labelSprite("AI", { size: 46, color: "#e9d5ff", opacity: 0.85 });
+  const label = labelSprite("AI", { size: 46, color: "#b8480a", opacity: 0.85 });
   label.scale.set(0.32, 0.16, 1);
   label.position.set(0, 0, 0.12);
   g.add(label);
@@ -498,11 +511,11 @@ function buildDataCube() {
   const g = new THREE.Group();
   g.add(new THREE.Mesh(
     new THREE.BoxGeometry(0.6, 0.6, 0.6),
-    new THREE.MeshPhysicalMaterial({ color: COL.violet, metalness: 0, roughness: 0.1, transmission: 0.9, thickness: 1, ior: 1.45, transparent: true, opacity: 0.26, depthWrite: false }),
+    new THREE.MeshPhysicalMaterial({ color: COL.orange, metalness: 0, roughness: 0.1, transmission: 0.9, thickness: 1, ior: 1.45, transparent: true, opacity: 0.3, depthWrite: false }),
   ));
   const wire = new THREE.LineSegments(
     new THREE.EdgesGeometry(new THREE.BoxGeometry(0.34, 0.34, 0.34)),
-    new THREE.LineBasicMaterial({ color: COL.lavender, transparent: true, opacity: 0.55, blending: ADD, depthWrite: false }),
+    new THREE.LineBasicMaterial({ color: COL.amber, transparent: true, opacity: 0.55, blending: GLOW, depthWrite: false }),
   );
   g.add(wire);
 
@@ -511,7 +524,7 @@ function buildDataCube() {
   for (let i = 0; i < arr.length; i += 1) arr[i] = (Math.random() - 0.5) * 0.5;
   const pg = new THREE.BufferGeometry();
   pg.setAttribute("position", new THREE.BufferAttribute(arr, 3));
-  g.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: COL.white, size: 0.03, transparent: true, opacity: 0.8, blending: ADD, depthWrite: false })));
+  g.add(new THREE.Points(pg, new THREE.PointsMaterial({ color: COL.glow, size: 0.03, transparent: true, opacity: 0.8, blending: GLOW, depthWrite: false })));
 
   g.position.set(4.3, 0.5, -4);
   return {
@@ -532,20 +545,20 @@ function buildAgentNode() {
   const g = new THREE.Group();
   const dot = new THREE.Mesh(
     new THREE.SphereGeometry(0.06, 12, 12),
-    new THREE.MeshBasicMaterial({ color: COL.magenta, transparent: true, opacity: 0.95, blending: ADD, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: COL.deepOrange, transparent: true, opacity: 0.95, blending: GLOW, depthWrite: false }),
   );
   g.add(dot);
   const rings = [];
   for (let i = 0; i < 3; i += 1) {
     const r = new THREE.Mesh(
       new THREE.TorusGeometry(0.16 + i * 0.09, 0.006, 8, 64),
-      new THREE.MeshBasicMaterial({ color: i === 1 ? COL.lavender : COL.electric, transparent: true, opacity: 0.5, blending: ADD, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: i === 1 ? COL.amber : COL.ember, transparent: true, opacity: 0.5, blending: GLOW, depthWrite: false }),
     );
     r.rotation.set(Math.PI / 2 + i * 0.3, i * 0.4, 0);
     rings.push(r);
     g.add(r);
   }
-  const label = labelSprite("AGENT", { size: 26, color: "#c084fc", opacity: 0.55 });
+  const label = labelSprite("AGENT", { size: 26, color: "#eb6217", opacity: 0.55 });
   label.scale.set(0.5, 0.125, 1);
   label.position.set(0, 0.5, 0);
   g.add(label);
@@ -572,26 +585,26 @@ function buildProcessPanel() {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(20,6,36,0.55)";
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
     ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = "rgba(168,85,247,0.5)";
+    ctx.strokeStyle = "rgba(235,98,23,0.32)";
     ctx.lineWidth = 3;
     ctx.strokeRect(6, 6, w - 12, h - 12);
     ctx.textBaseline = "middle";
     ctx.font = '600 20px "Courier New", monospace';
-    ctx.fillStyle = "#c084fc";
+    ctx.fillStyle = "#eb6217";
     ctx.fillText("AI PROCESS", 24, 36);
     steps.forEach((s, i) => {
       const y = 100 + i * 52;
       if (i === active) {
-        ctx.fillStyle = "rgba(217,70,239,0.28)";
+        ctx.fillStyle = "rgba(255,241,231,0.95)";
         ctx.fillRect(16, y - 20, w - 32, 40);
       }
       ctx.beginPath();
       ctx.arc(36, y, 6, 0, Math.PI * 2);
-      ctx.fillStyle = i <= active ? "#d946ef" : "#5b3f7a";
+      ctx.fillStyle = i <= active ? "#eb6217" : "#c7c7cc";
       ctx.fill();
-      ctx.fillStyle = i === active ? "#f5d0fe" : "#9a7bc0";
+      ctx.fillStyle = i === active ? "#111111" : "#8a8a8e";
       ctx.font = '600 22px "Courier New", monospace';
       ctx.fillText(s, 58, y);
     });
@@ -627,22 +640,22 @@ function buildAnalyticsPanel() {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
-    ctx.fillStyle = "rgba(17,0,23,0.5)";
+    ctx.fillStyle = "rgba(255,255,255,0.88)";
     ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = "rgba(124,44,255,0.45)";
+    ctx.strokeStyle = "rgba(235,98,23,0.32)";
     ctx.lineWidth = 3;
     ctx.strokeRect(6, 6, w - 12, h - 12);
-    ctx.fillStyle = "#c084fc";
+    ctx.fillStyle = "#eb6217";
     ctx.font = '600 18px "Courier New", monospace';
     ctx.textBaseline = "middle";
     ctx.fillText("DATA INSIGHT", 20, 28);
     const bars = 6;
     for (let i = 0; i < bars; i += 1) {
       const bh = 26 + (Math.sin(t * 0.8 + i) * 0.5 + 0.5) * 92;
-      ctx.fillStyle = i === bars - 1 ? "#d946ef" : "rgba(168,85,247,0.7)";
+      ctx.fillStyle = i === bars - 1 ? "#eb6217" : "rgba(247,133,63,0.6)";
       ctx.fillRect(24 + i * 30, h - 24 - bh, 18, bh);
     }
-    ctx.strokeStyle = "#f5d0fe";
+    ctx.strokeStyle = "#b8480a";
     ctx.lineWidth = 2;
     ctx.beginPath();
     for (let i = 0; i <= 20; i += 1) {
@@ -684,7 +697,7 @@ function buildNeuralCluster(mobile) {
   const nodes = pts.map((p) => {
     const s = new THREE.Mesh(
       new THREE.SphereGeometry(0.03, 8, 8),
-      new THREE.MeshBasicMaterial({ color: COL.lavender, transparent: true, opacity: 0.9, blending: ADD, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: COL.amber, transparent: true, opacity: 0.9, blending: GLOW, depthWrite: false }),
     );
     s.position.copy(p);
     s.userData.ph = Math.random() * 7;
@@ -695,7 +708,7 @@ function buildNeuralCluster(mobile) {
   pts.forEach((p, i) => pts.forEach((q, j) => { if (j > i && p.distanceTo(q) < 0.7) link.push(p, q); }));
   const lines = new THREE.LineSegments(
     new THREE.BufferGeometry().setFromPoints(link),
-    new THREE.LineBasicMaterial({ color: COL.violet, transparent: true, opacity: 0.3, blending: ADD, depthWrite: false }),
+    new THREE.LineBasicMaterial({ color: COL.orange, transparent: true, opacity: 0.3, blending: GLOW, depthWrite: false }),
   );
   g.add(lines);
 
@@ -721,9 +734,9 @@ function buildDataStream(position, speed) {
   ]);
   g.add(new THREE.Line(
     new THREE.BufferGeometry().setFromPoints(curve.getPoints(50)),
-    new THREE.LineBasicMaterial({ color: COL.lavender, transparent: true, opacity: 0.32, blending: ADD, depthWrite: false }),
+    new THREE.LineBasicMaterial({ color: COL.amber, transparent: true, opacity: 0.32, blending: GLOW, depthWrite: false }),
   ));
-  const packMat = new THREE.MeshBasicMaterial({ color: COL.white, transparent: true, opacity: 0.9, blending: ADD, depthWrite: false });
+  const packMat = new THREE.MeshBasicMaterial({ color: COL.glow, transparent: true, opacity: 0.9, blending: GLOW, depthWrite: false });
   const packs = [];
   for (let i = 0; i < 6; i += 1) {
     const s = new THREE.Mesh(new THREE.SphereGeometry(0.022, 6, 6), packMat);
@@ -749,11 +762,11 @@ function buildWireNode(geo, position, coreSize) {
   const g = new THREE.Group();
   g.add(new THREE.LineSegments(
     new THREE.EdgesGeometry(geo),
-    new THREE.LineBasicMaterial({ color: COL.electric, transparent: true, opacity: 0.4, blending: ADD, depthWrite: false }),
+    new THREE.LineBasicMaterial({ color: COL.ember, transparent: true, opacity: 0.4, blending: GLOW, depthWrite: false }),
   ));
   const inner = new THREE.Mesh(
     new THREE.SphereGeometry(coreSize, 8, 8),
-    new THREE.MeshBasicMaterial({ color: COL.magenta, transparent: true, opacity: 0.85, blending: ADD, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: COL.deepOrange, transparent: true, opacity: 0.85, blending: GLOW, depthWrite: false }),
   );
   g.add(inner);
   g.position.fromArray(position);
@@ -774,7 +787,7 @@ function buildCodeField(mobile) {
   const words = ["AI", "01", "NODE", "RUN", "AGENT", "DATA", "SYNC", "0xF3", "MODEL", "TRUE"];
   const items = [];
   for (let i = 0; i < (mobile ? 5 : 10); i += 1) {
-    const sp = labelSprite(words[i % words.length], { size: 30, color: i % 3 ? "#a855f7" : "#c084fc", opacity: 0.28 });
+    const sp = labelSprite(words[i % words.length], { size: 30, color: i % 3 ? "#eb6217" : "#f7853f", opacity: 0.28 });
     const s = 0.34 + Math.random() * 0.14;
     sp.scale.set(s, s * 0.28, 1);
     sp.position.set((Math.random() - 0.5) * 12, (Math.random() - 0.5) * 7, -4 - Math.random() * 5);
@@ -787,10 +800,10 @@ function buildCodeField(mobile) {
 
 function buildHud() {
   const group = new THREE.Group();
-  const a = labelSprite("MODEL  ONLINE", { size: 22, color: "#c084fc", opacity: 0.4 });
+  const a = labelSprite("MODEL  ONLINE", { size: 22, color: "#eb6217", opacity: 0.4 });
   a.scale.set(0.72, 0.11, 1);
   a.position.set(-1.75, 1.95, 0.6);
-  const b = labelSprite("NEURAL  SYNC", { size: 22, color: "#a855f7", opacity: 0.4 });
+  const b = labelSprite("NEURAL  SYNC", { size: 22, color: "#b8480a", opacity: 0.4 });
   b.scale.set(0.72, 0.11, 1);
   b.position.set(1.85, -1.95, 0.6);
   group.add(a, b);
@@ -805,14 +818,14 @@ function buildAIEnergyOrb(s = 1) {
   const group = new THREE.Group();
   const core = new THREE.Mesh(
     new THREE.SphereGeometry(0.09 * s, 16, 14),
-    new THREE.MeshBasicMaterial({ color: 0xc4b5fd, transparent: true, opacity: 0.95, blending: ADD, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: COL.orange, transparent: true, opacity: 0.95, blending: GLOW, depthWrite: false }),
   );
   group.add(core);
   [0.14, 0.185].forEach((r, i) => {
     group.add(new THREE.Mesh(
       new THREE.SphereGeometry(r * s, 20, 16),
       new THREE.MeshPhysicalMaterial({
-        color: 0x7c3aed, transmission: 0.9, transparent: true, opacity: 0.12 - i * 0.035,
+        color: 0xeb6217, transmission: 0.9, transparent: true, opacity: 0.2 - i * 0.05,
         roughness: 0.08, metalness: 0, ior: 1.45, depthWrite: false,
       }),
     ));
@@ -821,7 +834,7 @@ function buildAIEnergyOrb(s = 1) {
   for (let i = 0; i < 2; i += 1) {
     const rg = new THREE.Mesh(
       new THREE.TorusGeometry(0.2 * s, 0.005 * s, 6, 44),
-      new THREE.MeshBasicMaterial({ color: i ? 0xd946ef : 0xa855f7, transparent: true, opacity: 0.55, blending: ADD, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: i ? COL.deepOrange : COL.orange, transparent: true, opacity: 0.55, blending: GLOW, depthWrite: false }),
     );
     rg.rotation.set(Math.PI / 2 + i * 0.7, i * 0.5, 0);
     rings.push(rg);
@@ -833,7 +846,7 @@ function buildAIEnergyOrb(s = 1) {
   const pg = new THREE.BufferGeometry();
   pg.setAttribute("position", new THREE.BufferAttribute(arr, 3));
   const parts = new THREE.Points(pg, new THREE.PointsMaterial({
-    color: 0xf3e8ff, size: 0.016 * s, transparent: true, opacity: 0.8, blending: ADD, depthWrite: false,
+    color: COL.amber, size: 0.016 * s, transparent: true, opacity: 0.8, blending: GLOW, depthWrite: false,
   }));
   group.add(parts);
   return { group, core, rings, parts };
@@ -918,9 +931,9 @@ function buildAIHand(mobile) {
     tips.push(jointAt(pp, tr[2] * 1.1));
   }
 
-  const metalMat = new THREE.MeshPhysicalMaterial({ color: 0x280a46, metalness: 0.72, roughness: 0.17, clearcoat: 1, clearcoatRoughness: 0.08 });
-  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0x7c3aed, transmission: 0.75, roughness: 0.1, ior: 1.45, transparent: true, opacity: 0.55, depthWrite: false });
-  const tipMat = new THREE.MeshPhysicalMaterial({ color: 0x9d6bff, metalness: 0.92, roughness: 0.07, clearcoat: 1, clearcoatRoughness: 0.05 });
+  const metalMat = new THREE.MeshPhysicalMaterial({ color: 0xdedcd8, metalness: 0.28, roughness: 0.26, clearcoat: 1, clearcoatRoughness: 0.08 });
+  const glassMat = new THREE.MeshPhysicalMaterial({ color: 0xeb6217, transmission: 0.7, roughness: 0.1, ior: 1.45, transparent: true, opacity: 0.5, depthWrite: false });
+  const tipMat = new THREE.MeshPhysicalMaterial({ color: 0xaeaeac, metalness: 0.92, roughness: 0.09, clearcoat: 1, clearcoatRoughness: 0.05 });
   hand.add(new THREE.Mesh(mergeGeometries(metal, false), metalMat));
   hand.add(new THREE.Mesh(mergeGeometries(glass, false), glassMat));
   hand.add(new THREE.Mesh(mergeGeometries(tips, false), tipMat));
@@ -934,12 +947,12 @@ function buildAIHand(mobile) {
   [V(-0.13, 0.05, 0.0), V(0.0, 0.05, -0.05), V(0.12, 0.05, 0.02)].forEach((v, k, arr) => { if (k) strip.push(arr[k - 1], v); });
   hand.add(new THREE.LineSegments(
     new THREE.BufferGeometry().setFromPoints(strip),
-    new THREE.LineBasicMaterial({ color: 0xb488ff, transparent: true, opacity: 0.5, blending: ADD, depthWrite: false }),
+    new THREE.LineBasicMaterial({ color: COL.orange, transparent: true, opacity: 0.5, blending: GLOW, depthWrite: false }),
   ));
 
   const wristRing = new THREE.Mesh(
     new THREE.TorusGeometry(0.14, 0.012, 8, 28),
-    new THREE.MeshPhysicalMaterial({ color: 0x1c0838, metalness: 0.9, roughness: 0.15, clearcoat: 1, emissive: 0x6d28d9, emissiveIntensity: 0.35 }),
+    new THREE.MeshPhysicalMaterial({ color: 0xaeaeac, metalness: 0.9, roughness: 0.15, clearcoat: 1, emissive: 0xeb6217, emissiveIntensity: 0.35 }),
   );
   wristRing.position.set(0, -0.02, -0.3);
   wristRing.rotation.x = Math.PI / 2 + 0.1;
@@ -947,7 +960,7 @@ function buildAIHand(mobile) {
 
   const palmNode = new THREE.Mesh(
     new THREE.SphereGeometry(0.03, 10, 10),
-    new THREE.MeshBasicMaterial({ color: 0xc4b5fd, transparent: true, opacity: 0.9, blending: ADD, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: COL.orange, transparent: true, opacity: 0.9, blending: GLOW, depthWrite: false }),
   );
   palmNode.position.set(-0.02, 0.06, 0.03);
   hand.add(palmNode);
@@ -956,10 +969,14 @@ function buildAIHand(mobile) {
   orb.group.position.set(-0.03, 0.3, 0.08);
   hand.add(orb.group);
 
-  hand.rotation.set(-0.5, 0.72, 0.05);
+  // Lower-right of the composition, mirrored from its original lower-left seat
+  // so the humanoid head can take the left side and the two hero props balance
+  // across the centre. Same depth layer, so the camera path clears it exactly
+  // as before.
+  hand.rotation.set(-0.5, -0.72, -0.05);
   hand.scale.setScalar(mobile ? 1.05 : 1.3);
   const baseY = -1.95;
-  g.position.set(-1.9, baseY, -1.3);
+  g.position.set(2.0, baseY, -1.3);
 
   return {
     group: g,
@@ -983,7 +1000,12 @@ export function createAIIntelligenceScene({ mobile = false } = {}) {
   const codeField = buildCodeField(mobile);
   const hud = buildHud();
   const hand = buildAIHand(mobile);
+  const head = buildAIHumanoidHead(mobile);        // left hero — cybernetic face
+  const links = buildCoreLinks(mobile);            // module -> core data streams
+  const micro = buildMicroField(mobile);           // background AI micro objects
 
+  // Mid-ground intelligence modules. These plug into ThreeBackground's existing
+  // `floating` list, so the parent keeps owning their rotation and service-fade.
   const props = [
     buildChip(),
     buildDataCube(),
@@ -991,31 +1013,40 @@ export function createAIIntelligenceScene({ mobile = false } = {}) {
     buildProcessPanel(),
     buildAnalyticsPanel(),
     buildNeuralCluster(mobile),
+    buildPredictionNode([3.5, 2.5, -5.6]),
     buildDataStream([-4.3, 0.5, -5.4], 0.12),
     buildWireNode(new THREE.IcosahedronGeometry(0.24, 0), [2.7, 2.3, -6], 0.05),
-    buildWireNode(new THREE.OctahedronGeometry(0.24, 0), [-2.5, 2.5, -6.5], 0.045),
     buildWireNode(new THREE.BoxGeometry(0.26, 0.26, 0.26), [1.4, -2.6, -5.2], 0.04),
   ];
   if (!mobile) {
     props.push(
+      buildSecurityNode([-4.6, 1.85, -5.2]),
       buildDataStream([4.6, 1.9, -6], 0.1),
+      buildWireNode(new THREE.OctahedronGeometry(0.24, 0), [-2.5, 2.5, -6.5], 0.045),
       buildWireNode(new THREE.IcosahedronGeometry(0.18, 0), [-1.7, 2.7, -5.4], 0.035),
     );
   }
 
   const propUpdates = props.map((p) => p.update).filter(Boolean);
-  const roots = [brain.group, ringExtras.group, codeField.group, hud.group, hand.group, ...props.map((p) => p.mesh)];
+  const roots = [
+    brain.group, ringExtras.group, codeField.group, hud.group,
+    hand.group, head.group, links.group, micro.group,
+    ...props.map((p) => p.mesh),
+  ];
 
   return {
     brainGroup: brain.group,
     ringGroup: ringExtras.group,
-    sceneGroups: [codeField.group, hud.group, hand.group],
+    sceneGroups: [codeField.group, hud.group, hand.group, head.group, links.group, micro.group],
     floating: props.map((p) => ({ mesh: p.mesh, speed: p.speed, axis: p.axis })),
 
     update(elapsed, delta, orbitRotation) {
       updateBrain(brain, elapsed, delta);
       updateRingExtras(ringExtras, elapsed, delta, orbitRotation);
       hand.update(elapsed, delta);
+      head.update(elapsed, delta);
+      links.update(elapsed, delta);
+      micro.update(elapsed, delta);
       for (let i = 0; i < propUpdates.length; i += 1) propUpdates[i](elapsed, delta);
       codeField.items.forEach((s) => {
         s.position.y = s.userData.baseY + Math.sin(elapsed * 0.15 + s.userData.ph) * 0.3;

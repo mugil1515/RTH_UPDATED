@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { navigation } from "@/data/navigation";
-import logo from "@/assets/logos/rth-logo.png";
+import logo from "@/assets/logos/rth-logo-mark.png";
 export default function Navbar(){
  const [open,setOpen]=useState(false); const [compact,setCompact]=useState(false);
  useEffect(()=>{const onScroll=()=>setCompact(scrollY>90);addEventListener("scroll",onScroll,{passive:true});onScroll();return()=>removeEventListener("scroll",onScroll)},[]);

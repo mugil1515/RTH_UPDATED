@@ -135,7 +135,7 @@ export default function AppBackground() {
 
   return (
     <div className="app-background" aria-hidden="true">
-      <ThreeBackground />
+      <ThreeBackground /> 
       <CodeStreams />
       <div ref={focusRef} id="focus-layer" className="focus-layer" />
       <Vignette />

@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import logo from "@/assets/logos/rth-logo.png";
+import logo from "@/assets/logos/rth-logo-mark.png";
 
 export default function SiteLogo() {
   return (

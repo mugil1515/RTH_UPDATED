@@ -83,37 +83,38 @@ export default function ThreeBackground() {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     }
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.7;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x0b0610, mobile ? 0.018 : 0.012);
+    // Light-theme aerial perspective: distance fades to the page ground, not to black.
+    scene.fog = new THREE.FogExp2(0xfaf9f7, mobile ? 0.018 : 0.012);
 
     const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
     camera.position.set(0, 0, 14);
     const clock = new THREE.Clock();
 
-    const key = new THREE.DirectionalLight(0xfff9ff, 1.4);
+    const key = new THREE.DirectionalLight(0xffffff, 0.9);
     key.position.set(6, 8, 10);
     scene.add(key);
 
-    const violet = new THREE.PointLight(0x8f32e6, 6, 40, 2);
-    violet.position.set(-6, -2, 4);
-    scene.add(violet);
+    const warm = new THREE.PointLight(0xf7853f, 0.75, 40, 2);
+    warm.position.set(-6, -2, 4);
+    scene.add(warm);
 
-    const lavender = new THREE.PointLight(0xd9a8ff, 3, 30, 2);
-    lavender.position.set(4, -4, -6);
-    scene.add(lavender);
-    scene.add(new THREE.AmbientLight(0x170b20, 1.2));
+    const fill = new THREE.PointLight(0xffffff, 0.5, 30, 2);
+    fill.position.set(4, -4, -6);
+    scene.add(fill);
+    scene.add(new THREE.AmbientLight(0xdfe3f0, 0.25));
 
     // Exact central background object from the original single-file build.
     const core = new THREE.Group();
     const shellMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0x1d1026,
+      color: 0xeae7e2,
       metalness: 0.1,
       roughness: 0.15,
       transmission: 0.92,
       transparent: true,
-      opacity: 0.55,
+      opacity: 0.42,
       clearcoat: 1,
       clearcoatRoughness: 0.1,
       ior: 1.4,
@@ -123,7 +124,7 @@ export default function ThreeBackground() {
     const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 2), shellMaterial);
     core.add(shell);
 
-    const ringMaterial = new THREE.MeshStandardMaterial({ color: 0x281335, metalness: 0.9, roughness: 0.26 });
+    const ringMaterial = new THREE.MeshStandardMaterial({ color: 0xc6c5c2, metalness: 0.9, roughness: 0.26 });
     const rings = new THREE.Group();
     for (let index = 0; index < 3; index += 1) {
       const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6 + index * 0.28, 0.02, 10, 64), ringMaterial);
@@ -135,11 +136,11 @@ export default function ThreeBackground() {
 
     const orbiters = [];
     const orbiterMaterial = new THREE.MeshStandardMaterial({
-      color: 0x3a1b4d,
+      color: 0xb6b5b2,
       metalness: 0.85,
       roughness: 0.32,
-      emissive: 0x8f32e6,
-      emissiveIntensity: 0.06,
+      emissive: 0xeb6217,
+      emissiveIntensity: 0.12,
     });
     for (let index = 0; index < 5; index += 1) {
       const node = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), orbiterMaterial);
@@ -166,13 +167,13 @@ export default function ThreeBackground() {
     core.add(aiScene.ringGroup);    // orbit-ring highlights; orientation synced to `rings` in update()
 
     const pulseMaterial = new THREE.MeshStandardMaterial({
-      color: 0xfff9ff,
-      emissive: 0xd9a8ff,
-      emissiveIntensity: 2.2,
+      color: 0xf7853f,
+      emissive: 0xeb6217,
+      emissiveIntensity: 1.2,
     });
     const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), pulseMaterial);
     core.add(pulse);
-    core.add(new THREE.PointLight(0xd9a8ff, 8, 12, 2));
+    core.add(new THREE.PointLight(0xf7853f, 0.6, 12, 2));
     scene.add(core);
 
     // Floating props — the original generic panels / cubes / dot clusters are
@@ -199,16 +200,16 @@ export default function ThreeBackground() {
     }
     starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
     const starMaterial = new THREE.PointsMaterial({
-      color: 0xd9a8ff,
+      color: 0xeb6217,
       size: 0.02,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.18,
       sizeAttenuation: false,
     });
     const stars = new THREE.Points(starGeometry, starMaterial);
     scene.add(stars);
 
-    const grid = new THREE.GridHelper(60, 40, 0x2a223b, 0x16111f);
+    const grid = new THREE.GridHelper(60, 40, 0xeb6217, 0x9c9c9f);
     grid.position.y = -6;
     const gridMaterials = Array.isArray(grid.material) ? grid.material : [grid.material];
     gridMaterials.forEach((material) => {
@@ -411,7 +412,7 @@ export default function ThreeBackground() {
       coreBaseScale += (targetBaseScale - coreBaseScale) * rotDamping;
 
       const shellFade = smootherstep((pageProgress - 0.57) / 0.16);
-      shell.material.opacity = 0.55 * (1 - shellFade);
+      shell.material.opacity = 0.42 * (1 - shellFade);
 
       // Keep the WebGL system visibly alive behind the service orbit. The
       // service transition still pushes it deeper and softens its energy, but
@@ -422,7 +423,7 @@ export default function ThreeBackground() {
           ring.material.transparent = true;
           ring.material.opacity = visibleEnergy * 0.4;
         });
-        pulse.material.emissiveIntensity = 2.2 * (1 - serviceTransition * 0.58);
+        pulse.material.emissiveIntensity = 1.2 * (1 - serviceTransition * 0.58);
         orbiters.forEach((node) => {
           node.material.transparent = true;
           node.material.opacity = visibleEnergy * 0.6;
@@ -446,10 +447,10 @@ export default function ThreeBackground() {
 
       if (billingMode) {
         stars.rotation.y += (billingProgress * 0.075 - stars.rotation.y) * rotDamping;
-        stars.material.opacity = 0.23 * (1 - serviceTransition * 0.65);
+        stars.material.opacity = 0.13 * (1 - serviceTransition * 0.65);
       } else {
         stars.rotation.y += delta * 0.01;
-        stars.material.opacity = 0.32 * (1 - serviceTransition * 0.65);
+        stars.material.opacity = 0.18 * (1 - serviceTransition * 0.65);
       }
 
       renderer.render(scene, camera);
