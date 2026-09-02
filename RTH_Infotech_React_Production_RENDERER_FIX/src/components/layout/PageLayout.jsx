@@ -60,7 +60,7 @@ export default function PageLayout() {
     <>
       <Loader />
       <RouteTransition />
-      <AppBackground />
+      <AppBackground routePath={pathname} />
       <SiteLogo />
       <InnerBackButton />
       <main className="relative z-10">

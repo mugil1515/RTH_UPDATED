@@ -362,7 +362,7 @@ export default function ThreeBackground() {
       // still frame while the scroll-mapped camera and staging keep working.
       const delta = reducedMotion ? 0 : rawDelta;
       const elapsed = reducedMotion ? 0 : clock.elapsedTime;
-      const parallax = reducedMotion ? 0 : 1;
+      const parallax = reducedMotion || mobile ? 0 : 1;
       pointerX += (pointerTargetX - pointerX) * 0.055;
       pointerY += (pointerTargetY - pointerY) * 0.055;
 
@@ -429,8 +429,10 @@ export default function ThreeBackground() {
 
     window.__rth = { scene, camera, renderer, automation, render, THREE, mood, sections };
     window.addEventListener("resize", resize);
-    window.addEventListener("mousemove", onPointer, { passive: true });
-    window.addEventListener("touchmove", onTouch, { passive: true });
+    if (!mobile) {
+      window.addEventListener("mousemove", onPointer, { passive: true });
+      window.addEventListener("touchmove", onTouch, { passive: true });
+    }
 
     // Measure once now, then track every refresh.
     ScrollTrigger.addEventListener("refresh", measure);
@@ -457,8 +459,10 @@ export default function ThreeBackground() {
       scene.environment = null;
       studio.dispose();
       window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onPointer);
-      window.removeEventListener("touchmove", onTouch);
+      if (!mobile) {
+        window.removeEventListener("mousemove", onPointer);
+        window.removeEventListener("touchmove", onTouch);
+      }
 
       scene.traverse((object) => {
         object.geometry?.dispose?.();

@@ -228,6 +228,20 @@ html.services-depth .code-stream {
   text-shadow: none;
 }
 
+/* Service-detail routes keep JSON alive at the outer edges. The measured
+   feathered scrim above handles all attenuation where content intersects it. */
+html.service-detail-route .code-stream {
+  opacity: 0.16 !important;
+}
+html.service-detail-route .code-stream.s1,
+html.service-detail-route .code-stream.s3 {
+  left: -10vw;
+}
+html.service-detail-route .code-stream.s2,
+html.service-detail-route .code-stream.s4 {
+  right: -10vw;
+}
+
 @keyframes codeAmbientFloat {
   0% { transform: translateZ(0) rotate(var(--r, 0deg)); }
   100% { transform: translate3d(0, -10px, 0) rotate(var(--r, 0deg)); }
@@ -239,6 +253,10 @@ html.services-depth .code-stream {
 
 @media (max-width: 1100px) {
   .code-stream { width: min(300px, 28vw); max-height: 26vh; font-size: 10px; }
+  html.service-detail-route .code-stream.s1,
+  html.service-detail-route .code-stream.s3 { left: -16vw; }
+  html.service-detail-route .code-stream.s2,
+  html.service-detail-route .code-stream.s4 { right: -16vw; }
 }
 @media (max-width: 900px) {
   .code-stream { width: 42vw; max-height: 30vh; font-size: 9px; }
@@ -248,6 +266,11 @@ html.services-depth .code-stream {
   .code-stream { width: 76vw; }
   .code-stream.s2 { display: none; }
   .code-stream.s1 { left: 5%; top: 19%; }
+  html.service-detail-route .code-stream { opacity: 0.11 !important; }
+  html.service-detail-route .code-stream.s1,
+  html.service-detail-route .code-stream.s2 { display: block; width: 64vw; }
+  html.service-detail-route .code-stream.s1 { left: -52vw; top: 24%; }
+  html.service-detail-route .code-stream.s2 { right: -52vw; top: 28%; }
 }
 
 /* --------------------------------------------------------------------------

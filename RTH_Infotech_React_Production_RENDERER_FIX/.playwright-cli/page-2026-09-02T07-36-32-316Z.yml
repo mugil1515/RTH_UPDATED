@@ -1,0 +1,80 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: INITIALIZING RTH AI
+  - generic [aria-hidden]:
+    - generic [aria-hidden]:
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{ \""
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{ \""
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{ \""
+      - generic:
+        - generic: JSON • LIVE DATA
+        - code: "{"
+  - link "RTH Infotech home" [ref=e6] [cursor=pointer]:
+    - /url: /
+    - img "RTH Infotech" [ref=e7]
+  - button "Go back to the previous page" [ref=e8] [cursor=pointer]:
+    - generic [ref=e11]: BACK
+  - main [ref=e12]:
+    - article [ref=e13]:
+      - link "ALL SERVICES" [ref=e14] [cursor=pointer]:
+        - /url: /services
+      - generic [ref=e17]:
+        - generic [ref=e18]:
+          - generic [ref=e19]: 07 / System Bridge
+          - heading "API & Integrations" [level=1] [ref=e20]
+          - paragraph [ref=e21]: Reliable, well-documented integrations connecting the systems you already run.
+          - generic [ref=e22]:
+            - generic [ref=e23]: REST
+            - generic [ref=e24]: GraphQL
+            - generic [ref=e25]: Webhooks
+          - link "BUILD WITH RTH" [ref=e26] [cursor=pointer]:
+            - /url: /contact
+        - generic [ref=e28]:
+          - generic [ref=e29]: "{ SYSTEM A }"
+          - generic [ref=e34]: "{ SYSTEM B }"
+      - generic [ref=e36]:
+        - generic [ref=e37]:
+          - heading "Capabilities" [level=2] [ref=e38]
+          - generic [ref=e39]:
+            - generic [ref=e40]: REST & GraphQL APIs
+            - generic [ref=e41]: Payment Integration
+            - generic [ref=e42]: WhatsApp / Email
+            - generic [ref=e43]: CRM / ERP Integration
+            - generic [ref=e44]: Microservices
+            - generic [ref=e45]: Webhooks
+            - generic [ref=e46]: Authentication Systems
+            - generic [ref=e47]: Legacy System Integration
+        - generic [ref=e48]:
+          - heading "Engineering tools" [level=2] [ref=e49]
+          - generic [ref=e50]:
+            - generic [ref=e51]: Node.js
+            - generic [ref=e52]: Express
+            - generic [ref=e53]: GraphQL
+            - generic [ref=e54]: OpenAPI / Swagger
+            - generic [ref=e55]: Postman
+            - generic [ref=e56]: OAuth 2.0
+            - generic [ref=e57]: Webhooks
+            - generic [ref=e58]: API Gateways
+        - generic [ref=e59]:
+          - heading "Delivery process" [level=2] [ref=e60]
+          - generic [ref=e61]:
+            - generic [ref=e62]:
+              - generic [ref=e63]: "01"
+              - text: Define contracts
+            - generic [ref=e64]:
+              - generic [ref=e65]: "02"
+              - text: Secure endpoints
+            - generic [ref=e66]:
+              - generic [ref=e67]: "03"
+              - text: Connect third parties
+            - generic [ref=e68]:
+              - generic [ref=e69]: "04"
+              - text: Test + monitor integrations
+  - contentinfo [ref=e70]:
+    - generic [ref=e71]: © 2026 RTH Infotech Pvt Ltd
+    - generic [ref=e72]: Chennai, India

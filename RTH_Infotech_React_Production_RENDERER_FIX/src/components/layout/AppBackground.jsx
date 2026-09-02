@@ -29,6 +29,13 @@ import { gsap, ScrollTrigger } from "@/animations/gsapConfig";
 // Over-masking the heading band erases the scene from the open upper half of
 // a section and buys no readability in return (brief §4, §19).
 const SAFE_ZONES = [
+  {
+    root: ".service-detail-page",
+    head: ".service-detail-grid > div:first-child",
+    body: ".service-detail-grid .sd-visual, .detail-sections > section",
+    a: 0.78,
+    b: 0.80,
+  },
   { id: "hero", head: ".hero-title", body: ".hero-lead, .hero-ctas", a: 0.90, b: 0.78 },
   { id: "problems", head: ".section-heading", body: ".problem-grid, .problem-transform", a: 0.46, b: 0.50 },
   { id: "services", head: ".section-heading", body: ".section-inner", a: 0.44, b: 0.40 },
@@ -51,7 +58,7 @@ const FOCUS_STATES = [
   { selector: "#contact", x: "50%", y: "42%", strength: 0.62, size: "44%" },
 ];
 
-export default function AppBackground() {
+export default function AppBackground({ routePath = "" }) {
   const focusRef = useRef(null);
   const scrimRef = useRef(null);
 
@@ -62,7 +69,10 @@ export default function AppBackground() {
     if (!layer) return undefined;
 
     const zones = SAFE_ZONES
-      .map((zone) => ({ ...zone, el: document.getElementById(zone.id) }))
+      .map((zone) => ({
+        ...zone,
+        el: zone.root ? document.querySelector(zone.root) : document.getElementById(zone.id),
+      }))
       .filter((zone) => zone.el);
     if (!zones.length) return undefined;
 
@@ -72,7 +82,7 @@ export default function AppBackground() {
       let box = null;
       root.querySelectorAll(selector).forEach((el) => {
         const r = el.getBoundingClientRect();
-        if (!r.width || !r.height) return;
+        if (!r.width || !r.height || r.bottom <= 0 || r.top >= window.innerHeight) return;
         box = box
           ? {
             left: Math.min(box.left, r.left),
@@ -172,7 +182,13 @@ export default function AppBackground() {
       window.removeEventListener("resize", schedule);
       ScrollTrigger.removeEventListener("refresh", apply);
     };
-  }, []);
+  }, [routePath]);
+
+  useLayoutEffect(() => {
+    const active = /^\/services\/[^/]+/.test(routePath);
+    document.documentElement.classList.toggle("service-detail-route", active);
+    return () => document.documentElement.classList.remove("service-detail-route");
+  }, [routePath]);
 
   useLayoutEffect(() => {
     const layer = focusRef.current;
