@@ -64,7 +64,7 @@ export default function CodeStreams() {
       const cycle = () => {
         const root = node.parentElement;
         const fadeOut = gsap.to(root, {
-          opacity: 0.14,
+          opacity: 0.55,
           duration: 0.45,
           ease: "power2.out",
           onComplete: () => {
@@ -72,7 +72,7 @@ export default function CodeStreams() {
             typeText(node, payloads[payloadIndex], () => {
               payloadIndex = (payloadIndex + 1 + streamIndex) % payloads.length;
               const fadeIn = gsap.to(root, {
-                opacity: 0.4,
+                opacity: 0.92,
                 duration: 0.65,
                 ease: "power2.out",
                 onComplete: () => tweens.delete(fadeIn),

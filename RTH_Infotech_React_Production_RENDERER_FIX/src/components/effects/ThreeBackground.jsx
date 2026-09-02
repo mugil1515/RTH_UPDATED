@@ -1,47 +1,35 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { gsap, ScrollTrigger } from "@/animations/gsapConfig";
-import { createAIIntelligenceScene } from "@/components/effects/aiIntelligenceScene";
+import {
+  createAutomationScene,
+  DEFAULT_MOOD,
+  DEFAULT_SECTIONS,
+  SECTION_KEYS,
+  STAGE_A_Y,
+} from "@/components/effects/ai3d/automationScene";
+import { createStudioEnvironment } from "@/components/effects/ai3d/studioEnvironment";
+import {
+  FALLBACK_PATH,
+  SECTION_MOODS,
+  evaluateBeats,
+  resolveBeats,
+  resolveCameraPath,
+  sampleCamera,
+  smootherstep,
+} from "@/components/effects/ai3d/storyboard";
 
-const CAMERA_PATH = [
-  { p: 0, pos: [0, 0, 14], look: [0, 0, 0] },
-  { p: 0.12, pos: [1.2, 0.4, 11], look: [0, 0, -1] },
-  { p: 0.24, pos: [-1, 0.2, 8], look: [0, 0, -2] },
-  { p: 0.34, pos: [-0.15, 0.25, 5.8], look: [0, 0, -0.4] },
-  { p: 0.38, pos: [0.1, 0.22, 5.25], look: [0, 0, -0.8] },
-  { p: 0.42, pos: [0.18, 0.18, 4.75], look: [0, 0, -1.2] },
-  { p: 0.46, pos: [0.08, 0.14, 4.25], look: [0, 0, -1.7] },
-  { p: 0.5, pos: [-0.05, 0.1, 3.65], look: [0, 0, -2.3] },
-  { p: 0.55, pos: [-0.35, 0.12, 2.45], look: [-0.2, 0, -3.5] },
-  { p: 0.62, pos: [-1.6, 0.45, -2.4], look: [-1.4, 0, -7] },
-  { p: 0.72, pos: [1.5, -0.3, -6], look: [2, 0, -10] },
-  { p: 0.82, pos: [0, 0.6, -8], look: [0, 0, -14] },
-  { p: 0.9, pos: [0, 0, -4], look: [0, 0, -8] },
-  { p: 1, pos: [0, 0, 10], look: [0, 0, 0] },
-];
-
-const mix = (a, b, t) => a + (b - a) * t;
-const mixVec = (a, b, t) => [mix(a[0], b[0], t), mix(a[1], b[1], t), mix(a[2], b[2], t)];
-const smoothstep = (t) => t * t * (3 - 2 * t);
-const smootherstep = (t) => {
-  const p = Math.max(0, Math.min(1, t));
-  return p * p * p * (p * (p * 6 - 15) + 10);
-};
-
-function sampleCamera(progress) {
-  const p = Math.max(0, Math.min(1, progress));
-  for (let index = 0; index < CAMERA_PATH.length - 1; index += 1) {
-    const start = CAMERA_PATH[index];
-    const end = CAMERA_PATH[index + 1];
-    if (p >= start.p && p <= end.p) {
-      const local = smoothstep((p - start.p) / (end.p - start.p || 1));
-      return { pos: mixVec(start.pos, end.pos, local), look: mixVec(start.look, end.look, local) };
-    }
-  }
-  const last = CAMERA_PATH[CAMERA_PATH.length - 1];
-  return { pos: last.pos, look: last.look };
-}
-
+// The camera descends through the automation environment as the page scrolls:
+// Stage A (y 0) -> Stage B (y -12) -> Stage C (y -24).
+//
+// The keyframes and story beats live in storyboard.js, anchored to the real
+// measured position of each section rather than to fractions of total scroll,
+// so the beats stay locked to the copy they illustrate regardless of section
+// heights, pin length or viewport size.
+//
+// This component owns the renderer, camera, clock, lights and render loop.
+// It adds no pin, no scrub and no scroll length -- scroll speed and pinned
+// sections are untouched.
 export default function ThreeBackground() {
   const ref = useRef(null);
 
@@ -50,9 +38,22 @@ export default function ThreeBackground() {
     if (!canvas) return undefined;
 
     const mobile = window.innerWidth < 760;
+    const tablet = !mobile && window.innerWidth < 1200;
     const cpu = navigator.hardwareConcurrency || 8;
     const memory = navigator.deviceMemory || 8;
     const lowPower = mobile || cpu <= 4 || memory <= 4;
+
+    // Matches the rest of the site's reduced-motion convention (see
+    // effects.css): the composition stays fully visible, only the idle
+    // motion stops. Scroll-driven staging is user-driven, so it stays live.
+    const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let reducedMotion = reducedMotionQuery.matches;
+    const onMotionPreference = () => {
+      reducedMotion = reducedMotionQuery.matches;
+      // `mood` is declared below; it exists by the time this can ever fire.
+      mood.still = reducedMotion ? 1 : 0;
+    };
+    reducedMotionQuery.addEventListener("change", onMotionPreference);
 
     let renderer;
     try {
@@ -71,11 +72,16 @@ export default function ThreeBackground() {
     const pixelRatioCap = lowPower ? 1.1 : 1.45;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
     renderer.setSize(window.innerWidth, window.innerHeight, false);
-    // The original single-file build was compiled against pre-r152 Three.js.
-    // Keep its legacy color pipeline; newer r152+ color management makes the
-    // transmitted physical meshes read much darker / almost black.
+
+    // Colour management is ON. It was previously disabled because the
+    // transmitted physical meshes rendered almost black under it -- but that
+    // was the *symptom* of having no environment map, not a colour bug: a
+    // metal or a transmissive surface with nothing to reflect resolves to
+    // near-black regardless of the colour pipeline. With the baked studio
+    // environment below supplying reflections, the correct linear workflow is
+    // what actually makes the glass and titanium read as real materials.
     if (THREE.ColorManagement && "enabled" in THREE.ColorManagement) {
-      THREE.ColorManagement.enabled = false;
+      THREE.ColorManagement.enabled = true;
     }
     if ("outputEncoding" in renderer && THREE.sRGBEncoding !== undefined) {
       renderer.outputEncoding = THREE.sRGBEncoding;
@@ -83,142 +89,142 @@ export default function ThreeBackground() {
       renderer.outputColorSpace = THREE.SRGBColorSpace;
     }
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.7;
+    // Pulled back from 1.05: on a near-white page the problem is never that the
+    // scene is too dark, it is that the whites have nowhere left to go. A
+    // slightly lower exposure keeps tonal room between an object and the page
+    // behind it, which is what makes the forms read at all.
+    renderer.toneMappingExposure = 0.97;
 
     const scene = new THREE.Scene();
-    // Light-theme aerial perspective: distance fades to the page ground, not to black.
-    scene.fog = new THREE.FogExp2(0xfaf9f7, mobile ? 0.018 : 0.012);
+    // Transparent canvas over the light page; distance fades to the page ground.
+    scene.fog = new THREE.FogExp2(0xf8f6f3, mobile ? 0.019 : 0.0125);
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(0, 0, 14);
+    // Baked once at startup. Assigning it to scene.environment gives every
+    // physical material in the scene real reflections, refraction detail and
+    // specular rolloff -- the single largest contributor to the surfaces
+    // reading as glass/ceramic/metal instead of flat translucent shapes.
+    const studio = createStudioEnvironment(renderer);
+    scene.environment = studio.texture;
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 240);
+    camera.position.set(0, STAGE_A_Y + 3.6, 14.4);
     const clock = new THREE.Clock();
 
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
-    key.position.set(6, 8, 10);
+    // The studio environment now supplies the ambient and the reflections, so
+    // these lights are only here to shape form: a key for modelling, a rim to
+    // separate silhouettes from the white page, and a warm bounce.
+    const key = new THREE.DirectionalLight(0xfff7f0, 1.25);
+    key.position.set(7, 10, 8);
     scene.add(key);
 
-    const warm = new THREE.PointLight(0xf7853f, 0.75, 40, 2);
-    warm.position.set(-6, -2, 4);
+    // Back-right rim. This is what draws the bright edge along the cube and
+    // hand so they do not dissolve into the background.
+    const rim = new THREE.DirectionalLight(0xffffff, 0.55);
+    rim.position.set(-7, 4, -9);
+    scene.add(rim);
+
+    const warm = new THREE.PointLight(0xf7853f, 0.5, 44, 2);
+    warm.position.set(-6, 2, 5);
     scene.add(warm);
 
-    const fill = new THREE.PointLight(0xffffff, 0.5, 30, 2);
-    fill.position.set(4, -4, -6);
+    const fill = new THREE.PointLight(0xffffff, 0.32, 34, 2);
+    fill.position.set(5, -6, -5);
     scene.add(fill);
-    scene.add(new THREE.AmbientLight(0xdfe3f0, 0.25));
+    // Kept low deliberately: the environment already lifts the shadows, and
+    // more ambient here only flattens the forms back out.
+    scene.add(new THREE.AmbientLight(0xf2f0ec, 0.12));
 
-    // Exact central background object from the original single-file build.
-    const core = new THREE.Group();
-    const shellMaterial = new THREE.MeshPhysicalMaterial({
-      color: 0xeae7e2,
-      metalness: 0.1,
-      roughness: 0.15,
-      transmission: 0.92,
-      transparent: true,
-      opacity: 0.42,
-      clearcoat: 1,
-      clearcoatRoughness: 0.1,
-      ior: 1.4,
-      envMapIntensity: 1.2,
-      depthWrite: false,
-    });
-    const shell = new THREE.Mesh(new THREE.IcosahedronGeometry(2.1, 2), shellMaterial);
-    core.add(shell);
+    // The whole reference composition, rebuilt as geometry.
+    const automation = createAutomationScene({ mobile, tablet });
+    scene.add(automation.root);
 
-    const ringMaterial = new THREE.MeshStandardMaterial({ color: 0xc6c5c2, metalness: 0.9, roughness: 0.26 });
-    const rings = new THREE.Group();
-    for (let index = 0; index < 3; index += 1) {
-      const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6 + index * 0.28, 0.02, 10, 64), ringMaterial);
-      ring.rotation.x = (Math.PI / 2) * (index / 3) + index * 0.5;
-      ring.rotation.y = index * 0.8;
-      rings.add(ring);
-    }
-    core.add(rings);
+    // Live blended mood. GSAP tweens this on section entry so the scene eases
+    // between states - no cuts, and it reuses the existing timeline system.
+    const mood = { ...DEFAULT_MOOD, still: reducedMotion ? 1 : 0 };
+    let moodTween = null;
 
-    const orbiters = [];
-    const orbiterMaterial = new THREE.MeshStandardMaterial({
-      color: 0xb6b5b2,
-      metalness: 0.85,
-      roughness: 0.32,
-      emissive: 0xeb6217,
-      emissiveIntensity: 0.12,
-    });
-    for (let index = 0; index < 5; index += 1) {
-      const node = new THREE.Mesh(new THREE.OctahedronGeometry(0.09, 0), orbiterMaterial);
-      node.userData = {
-        radius: 3.1 + Math.random() * 0.6,
-        angle: (index / 5) * Math.PI * 2,
-        speed: 0.08 + Math.random() * 0.05,
-        yFreq: 0.5 + Math.random(),
-        yAmp: 0.4 + Math.random() * 0.5,
-      };
-      orbiters.push(node);
-      core.add(node);
-    }
+    // Live blended section weights. Exactly one section is ~1 at a time and
+    // the rest ease to 0, which is what lets the scene run ONE story sequence
+    // at a time and let it finish before the next begins. Same triggers, same
+    // easing convention as the mood above - no new scroll system.
+    const sections = { ...DEFAULT_SECTIONS };
+    const sectionTarget = {};
+    let sectionTween = null;
+    const setSection = (id) => {
+      SECTION_KEYS.forEach((key) => { sectionTarget[key] = key === id ? 1 : 0; });
+      sectionTween?.kill();
+      sectionTween = gsap.to(sections, {
+        ...sectionTarget,
+        duration: 0.9,
+        ease: "power2.out",
+        overwrite: true,
+      });
+    };
 
-    // Procedural "AI Intelligence Layer" visual set. Replaces the original centre
-    // blob (4 cubes + translucent inner sphere) and the meaningless floating
-    // props with an AI brain / intelligence core, extra orbital ring highlights
-    // and a set of small AI objects. All of it is built in aiIntelligenceScene.js
-    // and only plugged into the EXISTING scene graph + loop below — the shell,
-    // the orbit `rings`, the `orbiters`, `pulse`, `stars`, the camera path and
-    // every scroll / service / billing transform are left exactly as they were.
-    const aiScene = createAIIntelligenceScene({ mobile });
-    core.add(aiScene.brainGroup);   // inherits core rotation / scroll scale / z push
-    core.add(aiScene.ringGroup);    // orbit-ring highlights; orientation synced to `rings` in update()
+    // Which industry the visitor has selected, read from the existing nav
+    // rather than by changing the Industries component: the button that owns
+    // the `active` class is the source of truth the page already maintains.
+    let industry = null;
+    let industryNav = null;
+    let industryObserver = null;
+    const readIndustry = () => {
+      if (!industryNav) return;
+      const buttons = industryNav.querySelectorAll("button");
+      for (let i = 0; i < buttons.length; i += 1) {
+        if (buttons[i].classList.contains("active")) {
+          industry = automation.industries[i % automation.industries.length];
+          return;
+        }
+      }
+    };
+    const bindIndustryNav = () => {
+      if (industryNav) return;
+      const nav = document.querySelector("#industries .industry-nav");
+      if (!nav) return;
+      industryNav = nav;
+      industryObserver = new MutationObserver(readIndustry);
+      industryObserver.observe(nav, {
+        attributes: true, attributeFilter: ["class"], subtree: true,
+      });
+      readIndustry();
+    };
 
-    const pulseMaterial = new THREE.MeshStandardMaterial({
-      color: 0xf7853f,
-      emissive: 0xeb6217,
-      emissiveIntensity: 1.2,
-    });
-    const pulse = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), pulseMaterial);
-    core.add(pulse);
-    core.add(new THREE.PointLight(0xf7853f, 0.6, 12, 2));
-    scene.add(core);
+    // Re-measured on every ScrollTrigger refresh, which is exactly when
+    // section geometry can have changed (resize, pin spacers, route content).
+    let cameraPath = FALLBACK_PATH;
+    let beatPath = [];
+    const beats = {};
+    const measure = () => {
+      const maxScroll = ScrollTrigger.maxScroll(window);
+      cameraPath = resolveCameraPath(maxScroll) || FALLBACK_PATH;
+      beatPath = resolveBeats(maxScroll);
+      // Refresh is also the reliable point at which route content is known to
+      // be in the DOM, so the industry nav is bound here rather than guessed
+      // at mount time.
+      bindIndustryNav();
+    };
 
-    // Floating props — the original generic panels / cubes / dot clusters are
-    // replaced by the procedural AI objects from aiIntelligenceScene.js (AI chip,
-    // data cube, agent node, process + analytics HUD panels, neural cluster,
-    // data streams, wireframe data nodes). They plug into this same `floating`
-    // list so the existing loop keeps owning their rotation + service-fade, and
-    // their finer internal motion runs from aiScene.update(). Approximate count
-    // and placement mirror what was here before.
-    const floating = [];
-    aiScene.sceneGroups.forEach((group) => scene.add(group));
-    aiScene.floating.forEach((item) => {
-      scene.add(item.mesh);
-      floating.push(item);
-    });
+    // Viewport-dependent framing, recomputed on resize so rotating a phone or
+    // dragging a desktop window narrow lands on the right composition.
+    //   dolly  multiplies the camera distance — further back, smaller objects
+    //   lift   raises camera and look target together, dropping the scene
+    //          lower in frame so stacked content sits above it
+    const framing = { dolly: 1, lift: 0 };
+    const measureFraming = () => {
+      const w = window.innerWidth;
+      if (w < 760) {
+        framing.dolly = 1.26;
+        framing.lift = 1.5;
+      } else if (w < 1200) {
+        framing.dolly = 1.12;
+        framing.lift = 0.7;
+      } else {
+        framing.dolly = 1;
+        framing.lift = 0;
+      }
+    };
+    measureFraming();
 
-    const starCount = mobile ? 130 : 420;
-    const starGeometry = new THREE.BufferGeometry();
-    const starPositions = new Float32Array(starCount * 3);
-    for (let index = 0; index < starCount; index += 1) {
-      starPositions[index * 3] = (Math.random() - 0.5) * 40;
-      starPositions[index * 3 + 1] = (Math.random() - 0.5) * 40;
-      starPositions[index * 3 + 2] = (Math.random() - 0.5) * 60 - 10;
-    }
-    starGeometry.setAttribute("position", new THREE.BufferAttribute(starPositions, 3));
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xeb6217,
-      size: 0.02,
-      transparent: true,
-      opacity: 0.18,
-      sizeAttenuation: false,
-    });
-    const stars = new THREE.Points(starGeometry, starMaterial);
-    scene.add(stars);
-
-    const grid = new THREE.GridHelper(60, 40, 0xeb6217, 0x9c9c9f);
-    grid.position.y = -6;
-    const gridMaterials = Array.isArray(grid.material) ? grid.material : [grid.material];
-    gridMaterials.forEach((material) => {
-      material.transparent = true;
-      material.opacity = 0.08;
-    });
-    scene.add(grid);
-
-    // These values mirror S/T/M/x in the original animation bundle.
     let pointerTargetX = 0;
     let pointerTargetY = 0;
     let pointerX = 0;
@@ -227,16 +233,14 @@ export default function ThreeBackground() {
     let serviceTransition = 0;
     let billingMode = false;
     let billingProgress = 0;
-    let previousTransition = -1;
     let transitionTween = null;
     let resizeRaf = 0;
     let raf = 0;
 
-    const currentPosition = new THREE.Vector3(0, 0, 14);
-    const currentLook = new THREE.Vector3(0, 0, 0);
+    const currentPosition = new THREE.Vector3(0, STAGE_A_Y + 4.2, 15.5);
+    const currentLook = new THREE.Vector3(0, STAGE_A_Y - 0.6, 0);
     const desiredPosition = new THREE.Vector3();
     const desiredLook = new THREE.Vector3();
-    let coreBaseScale = 1;
 
     const setServiceTransition = (target) => {
       transitionTween?.kill();
@@ -254,14 +258,40 @@ export default function ThreeBackground() {
       });
     };
 
+    // Unchanged trigger set: one global progress reader plus the existing
+    // #services and #billing hooks. No new animation system, no new triggers.
     const triggers = [];
-    const globalTrigger = ScrollTrigger.create({
+    triggers.push(ScrollTrigger.create({
       trigger: document.documentElement,
       start: 0,
       end: "max",
       onUpdate: (self) => { pageProgress = self.progress; },
+    }));
+
+    // One trigger per section, purely as a read of which section is on screen.
+    // These add no pinning, no scrub and no scroll length - they only decide
+    // what the background looks like at a given point.
+    SECTION_MOODS.forEach(({ id, energy, spread, calm, veil }) => {
+      const element = document.getElementById(id);
+      if (!element) return;
+      const apply = () => {
+        moodTween?.kill();
+        moodTween = gsap.to(mood, {
+          energy, spread, calm, veil,
+          duration: 1.1,
+          ease: "power2.out",
+          overwrite: true,
+        });
+        setSection(id);
+      };
+      triggers.push(ScrollTrigger.create({
+        trigger: element,
+        start: "top 62%",
+        end: "bottom 38%",
+        onEnter: apply,
+        onEnterBack: apply,
+      }));
     });
-    triggers.push(globalTrigger);
 
     const serviceSection = document.querySelector("#services");
     if (serviceSection) {
@@ -318,6 +348,7 @@ export default function ThreeBackground() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight, false);
+        measureFraming();
         ScrollTrigger.refresh();
       });
     };
@@ -326,149 +357,105 @@ export default function ThreeBackground() {
       raf = requestAnimationFrame(render);
       if (document.hidden || !renderer) return;
 
-      const delta = Math.min(clock.getDelta(), 0.05);
-      const elapsed = clock.elapsedTime;
+      const rawDelta = Math.min(clock.getDelta(), 0.05);
+      // delta drives every idle animation, so zeroing it holds the scene on a
+      // still frame while the scroll-mapped camera and staging keep working.
+      const delta = reducedMotion ? 0 : rawDelta;
+      const elapsed = reducedMotion ? 0 : clock.elapsedTime;
+      const parallax = reducedMotion ? 0 : 1;
       pointerX += (pointerTargetX - pointerX) * 0.055;
       pointerY += (pointerTargetY - pointerY) * 0.055;
 
-      let state;
-      if (billingMode) {
-        const p = smootherstep(billingProgress);
-        state = {
-          pos: mixVec([0.08, 0.22, 5.25], [-0.12, 0.1, 3.85], p),
-          look: mixVec([0, 0, -0.8], [-0.1, 0, -2.15], p),
-        };
-      } else {
-        state = sampleCamera(pageProgress);
-      }
+      const state = sampleCamera(cameraPath, pageProgress);
+
+      // Beat gates for this frame, from the measured section anchors.
+      evaluateBeats(beatPath, pageProgress, beats);
+
+      // Gentle parallax + a slow dolly; never a spin. The billing section adds
+      // a small extra push-in rather than relocating the camera, so it layers
+      // onto the scroll story instead of fighting it.
+      const billingPush = billingMode ? smootherstep(billingProgress) * 0.9 : 0;
+      const drift = Math.sin(elapsed * 0.16) * 0.16 * parallax;
+
+      // Narrow-viewport framing. On phones and small tablets the content
+      // column is the full width of the screen, so there is no open space
+      // beside it for the scene to occupy and no composition that can move the
+      // geometry "around" the copy. The only honest levers are distance and
+      // height: pull back so every object is smaller and further from the
+      // type, and drop the whole scene lower in frame so the stacked heading
+      // and card block sits above it rather than on top of it (brief §13).
+      const desiredPosZ = state.pos[2] * framing.dolly - billingPush;
 
       desiredPosition.set(
-        state.pos[0] + pointerX * (billingMode ? 0.16 : 0.35),
-        state.pos[1] - pointerY * (billingMode ? 0.1 : 0.2),
-        state.pos[2],
+        state.pos[0] + pointerX * 0.5 * parallax + drift,
+        state.pos[1] - pointerY * 0.32 * parallax
+          + Math.cos(elapsed * 0.13) * 0.1 * parallax + framing.lift,
+        desiredPosZ,
       );
       desiredLook.set(
-        state.look[0] + pointerX * (billingMode ? 0.06 : 0.14),
-        state.look[1] - pointerY * (billingMode ? 0.05 : 0.1),
+        state.look[0] + pointerX * 0.18 * parallax,
+        state.look[1] - pointerY * 0.12 * parallax + framing.lift,
         state.look[2],
       );
 
-      // A single damped follow (rather than snapping straight to the target)
-      // keeps the idle <-> billing state switch from popping the camera/core
-      // to a new position in one frame.
-      const damping = 1 - Math.exp(-3.8 * delta);
+      // One damped follow keeps every state change smooth - no abrupt cuts.
+      const damping = 1 - Math.exp(-3.8 * rawDelta);
       currentPosition.lerp(desiredPosition, damping);
       currentLook.lerp(desiredLook, damping);
       camera.position.copy(currentPosition);
       camera.lookAt(currentLook);
 
-      const rotDamping = 1 - Math.exp(-4.2 * delta);
-      const p = smootherstep(billingProgress);
+      automation.update(
+        pageProgress, elapsed, delta, mood,
+        beatPath.length ? beats : null,
+        sections,
+        industry,
+      );
 
-      const targetCoreY = billingMode ? p * 0.38 : elapsed * 0.05;
-      const targetRingsY = billingMode ? -p * 0.58 : -elapsed * 0.08;
-      const targetRingsX = billingMode ? p * 0.12 : elapsed * 0.02;
-      const targetShellY = billingMode ? p * 0.24 : elapsed * 0.03;
-      const targetPulseScale = billingMode ? 1 + p * 0.045 : 1 + Math.sin(elapsed * 1.5) * 0.08;
-
-      core.rotation.y += (targetCoreY - core.rotation.y) * rotDamping;
-      rings.rotation.y += (targetRingsY - rings.rotation.y) * rotDamping;
-      rings.rotation.x += (targetRingsX - rings.rotation.x) * rotDamping;
-      shell.rotation.y += (targetShellY - shell.rotation.y) * rotDamping;
-      pulse.scale.setScalar(pulse.scale.x + (targetPulseScale - pulse.scale.x) * rotDamping);
-
-      orbiters.forEach((node, index) => {
-        let targetX;
-        let targetY;
-        let targetZ;
-        if (billingMode) {
-          const angle = node.userData.angle + p * (0.32 + index * 0.035);
-          targetX = Math.cos(angle) * node.userData.radius;
-          targetY = Math.sin(p * Math.PI * 1.2 + index) * node.userData.yAmp * 0.42;
-          targetZ = Math.sin(angle) * node.userData.radius;
-        } else {
-          const angle = node.userData.angle + elapsed * node.userData.speed;
-          targetX = Math.cos(angle) * node.userData.radius;
-          targetY = Math.sin(elapsed * node.userData.yFreq) * node.userData.yAmp;
-          targetZ = Math.sin(angle) * node.userData.radius;
-        }
-        node.position.x += (targetX - node.position.x) * rotDamping;
-        node.position.y += (targetY - node.position.y) * rotDamping;
-        node.position.z += (targetZ - node.position.z) * rotDamping;
-        node.rotation.x += 0.01;
-        node.rotation.y += 0.008;
-      });
-
-      // Internal-only micro-animation for the AI intelligence visuals (brain
-      // core, orbit-ring light points, floating AI props, drifting code text).
-      // Every parent transform — core rotation, scroll scale, camera, service /
-      // billing transitions, orbit-ring rotation — is still driven by the code
-      // above/below; this only breathes life into the replaced child objects.
-      aiScene.update(elapsed, delta, rings.rotation);
-
-      const grow1 = smootherstep((pageProgress - 0.3) / 0.24);
-      const grow2 = smootherstep((pageProgress - 0.54) / 0.12);
-      const targetBaseScale = billingMode ? 1.12 + p * 0.46 : 1 + grow1 * 0.72 + grow2 * 0.38;
-      coreBaseScale += (targetBaseScale - coreBaseScale) * rotDamping;
-
-      const shellFade = smootherstep((pageProgress - 0.57) / 0.16);
-      shell.material.opacity = 0.42 * (1 - shellFade);
-
-      // Keep the WebGL system visibly alive behind the service orbit. The
-      // service transition still pushes it deeper and softens its energy, but
-      // no longer reduces it to an almost invisible 3%.
-      const visibleEnergy = 1 - serviceTransition * 0.58;
-      if (Math.abs(previousTransition - serviceTransition) > 0.004) {
-        rings.children.forEach((ring) => {
-          ring.material.transparent = true;
-          ring.material.opacity = visibleEnergy * 0.4;
-        });
-        pulse.material.emissiveIntensity = 1.2 * (1 - serviceTransition * 0.58);
-        orbiters.forEach((node) => {
-          node.material.transparent = true;
-          node.material.opacity = visibleEnergy * 0.6;
-        });
-        previousTransition = serviceTransition;
-      }
-
-      core.position.z = -serviceTransition * 6;
-      core.scale.setScalar(coreBaseScale * (1 - serviceTransition * 0.28));
-
-      floating.forEach((item, index) => {
-        if (billingMode) {
-          if (item.baseRotation === undefined) item.baseRotation = item.mesh.rotation[item.axis];
-          item.mesh.rotation[item.axis] = item.baseRotation + smootherstep(billingProgress) * (0.1 + index * 0.018);
-        } else {
-          item.baseRotation = undefined;
-          item.mesh.rotation[item.axis] += delta * item.speed;
-        }
-        item.mesh.scale.setScalar(1 - serviceTransition * 0.48);
-      });
-
-      if (billingMode) {
-        stars.rotation.y += (billingProgress * 0.075 - stars.rotation.y) * rotDamping;
-        stars.material.opacity = 0.13 * (1 - serviceTransition * 0.65);
-      } else {
-        stars.rotation.y += delta * 0.01;
-        stars.material.opacity = 0.18 * (1 - serviceTransition * 0.65);
-      }
+      // While the DOM service orbit is on screen, ease the environment back so
+      // the foreground UI stays clean. Softened from the previous -3.6 / 0.88:
+      // the scene now carries real content at that moment (the connected
+      // systems lighting one by one), and pushing it that far back was a large
+      // part of why the background read as washed out.
+      // Give the hero headline a clear central lane: the primary object stays
+      // visible around it, but sits lower and deeper while the hero is active.
+      const heroWeight = sections.hero || 0;
+      automation.root.position.y = -heroWeight * (mobile ? 1.8 : 1.15);
+      automation.root.position.z = -serviceTransition * 2.4 - heroWeight * (mobile ? 2.1 : 1.35);
+      automation.root.scale.setScalar(1 - serviceTransition * 0.06 - heroWeight * (mobile ? 0.08 : 0.035));
 
       renderer.render(scene, camera);
     };
 
+    window.__rth = { scene, camera, renderer, automation, render, THREE, mood, sections };
     window.addEventListener("resize", resize);
     window.addEventListener("mousemove", onPointer, { passive: true });
     window.addEventListener("touchmove", onTouch, { passive: true });
 
+    // Measure once now, then track every refresh.
+    ScrollTrigger.addEventListener("refresh", measure);
+    measure();
+
     ScrollTrigger.refresh();
+    measure();
     raf = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(raf);
+      reducedMotionQuery.removeEventListener("change", onMotionPreference);
+      ScrollTrigger.removeEventListener("refresh", measure);
+      delete window.__rth;
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       transitionTween?.kill();
+      moodTween?.kill();
+      sectionTween?.kill();
+      industryObserver?.disconnect();
+      gsap.killTweensOf(mood);
+      gsap.killTweensOf(sections);
       triggers.forEach((trigger) => trigger.kill());
-      aiScene.dispose();
+      automation.dispose();
+      scene.environment = null;
+      studio.dispose();
       window.removeEventListener("resize", resize);
       window.removeEventListener("mousemove", onPointer);
       window.removeEventListener("touchmove", onTouch);

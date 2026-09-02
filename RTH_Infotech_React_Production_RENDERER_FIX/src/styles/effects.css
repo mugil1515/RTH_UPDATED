@@ -1,6 +1,18 @@
 /* ==========================================================================
    Background layers, chrome and floating controls — light theme.
-   Layer order (unchanged): canvas 1 · focus 2 · code 3 · vignette 4 · grain 5.
+
+   Layer order inside .app-background:
+     canvas 1 · focus 2 · vignette 3 · code 4 · CONTENT SCRIM 5 · grain 6
+   All of them are below --z-content, so nothing here can ever paint over
+   readable or interactive content. The JSON panels sit above the vignette:
+   they live at the page edges where its white wash peaks, so underneath it
+   they were bleached out.
+
+   The content scrim is the last ambient layer for a reason: it is the mask
+   that keeps the 3D story off the copy, and it has to govern EVERYTHING the
+   background draws — geometry, JSON panels and all — not just the canvas.
+   Its rectangles are measured from the live DOM by AppBackground.jsx.
+
    The focus and vignette layers used to darken the page; on the bright theme
    they lighten it instead, so the same GSAP-driven variables still work.
    ========================================================================== */
@@ -8,7 +20,7 @@
 .app-background {
   position: fixed;
   inset: 0;
-  z-index: 0;
+  z-index: var(--z-bg);
   pointer-events: none;
   overflow: hidden;
   width: 100vw;
@@ -16,22 +28,91 @@
   height: 100dvh;
 }
 
+/* The canvas is decoration only: it must never intercept a click meant for a
+   button, a link or a form field underneath it. */
 .three-background {
   position: absolute;
   inset: 0;
   display: block;
   width: 100% !important;
   height: 100% !important;
-  z-index: 1 !important;
+  z-index: var(--z-bg-canvas) !important;
+  pointer-events: none;
+}
+
+/* --------------------------------------------------------------------------
+   Content safe zones.
+
+   Two feathered ellipses, positioned over the foreground content of whichever
+   section is on screen: one for the heading band, one for the panel/card band.
+   AppBackground.jsx measures the real bounding boxes each frame the page
+   scrolls and writes them into these variables, so the mask follows the
+   layout instead of guessing at it — which is what makes it survive resizes,
+   different section heights and the pinned #services block.
+
+   Feathered, never a hard rectangle: the centre stop is the strongest and the
+   edge fades to nothing, so the 3D scene stays fully visible in open space and
+   simply loses contrast where words are.
+   -------------------------------------------------------------------------- */
+.content-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg-scrim);
+  pointer-events: none;
+
+  --scrim-a-x: 50%;
+  --scrim-a-y: 30%;
+  --scrim-a-w: 46%;
+  --scrim-a-h: 20%;
+  --scrim-a-core: 0;
+
+  --scrim-b-x: 50%;
+  --scrim-b-y: 70%;
+  --scrim-b-w: 46%;
+  --scrim-b-h: 26%;
+  --scrim-b-core: 0;
+
+  background:
+    radial-gradient(
+      ellipse var(--scrim-a-w) var(--scrim-a-h) at var(--scrim-a-x) var(--scrim-a-y),
+      rgba(255, 253, 251, var(--scrim-a-core)) 0%,
+      rgba(255, 253, 251, calc(var(--scrim-a-core) * 0.96)) 58%,
+      rgba(255, 253, 251, calc(var(--scrim-a-core) * 0.5)) 80%,
+      rgba(255, 253, 251, 0) 100%
+    ),
+    radial-gradient(
+      ellipse var(--scrim-b-w) var(--scrim-b-h) at var(--scrim-b-x) var(--scrim-b-y),
+      rgba(255, 253, 251, var(--scrim-b-core)) 0%,
+      rgba(255, 253, 251, calc(var(--scrim-b-core) * 0.96)) 58%,
+      rgba(255, 253, 251, calc(var(--scrim-b-core) * 0.5)) 80%,
+      rgba(255, 253, 251, 0) 100%
+    );
+}
+
+/* Mobile is where readability breaks first: the content column is the whole
+   screen, so there is no "open space" for the scene to occupy beside it. The
+   mask is driven harder and wider there, and the scene itself is pushed back
+   (see the mobile tier in automationScene.js). */
+@media (max-width: 760px) {
+  .content-scrim {
+    --scrim-boost: 1;
+  }
 }
 
 /* A soft studio veil. --focus-strength / --focus-size are still animated by
    AppBackground.jsx exactly as before; only the ink changed from near-black
-   to white so the AI scene reads on a bright ground. */
+   to white so the AI scene reads on a bright ground.
+
+   The stop alphas below are roughly 60% of what they were. This layer washes
+   white over the canvas, and at the previous values it was bleaching the 3D
+   scene toward the page colour at exactly the edges of frame where the
+   business objects live — a large part of why the animation read as faint.
+   The centre stop is untouched, so text over the middle of the page keeps the
+   same protection it had. */
 .focus-layer {
   position: absolute;
   inset: 0;
-  z-index: 2 !important;
+  z-index: var(--z-bg-focus) !important;
   pointer-events: none;
   --focus-x: 50%;
   --focus-y: 44%;
@@ -39,17 +120,17 @@
   --focus-size: 46%;
   background: radial-gradient(
     circle at var(--focus-x) var(--focus-y),
-    rgba(255, 255, 255, calc(var(--focus-strength) * 0.04)) 0%,
-    rgba(255, 255, 255, calc(var(--focus-strength) * 0.2)) var(--focus-size),
-    rgba(255, 255, 255, calc(var(--focus-strength) * 0.46)) calc(var(--focus-size) + 22%),
-    rgba(255, 255, 255, calc(var(--focus-strength) * 0.6)) calc(var(--focus-size) + 40%)
+    rgba(255, 255, 255, calc(var(--focus-strength) * 0.02)) 0%,
+    rgba(255, 255, 255, calc(var(--focus-strength) * 0.08)) var(--focus-size),
+    rgba(255, 255, 255, calc(var(--focus-strength) * 0.19)) calc(var(--focus-size) + 22%),
+    rgba(255, 255, 255, calc(var(--focus-strength) * 0.26)) calc(var(--focus-size) + 40%)
   );
 }
 
 .code-streams {
   position: absolute;
   inset: 0;
-  z-index: 3 !important;
+  z-index: var(--z-bg-code) !important;
   pointer-events: none;
   overflow: hidden;
   mask-image: linear-gradient(to bottom, transparent 1%, #000 10%, #000 90%, transparent 99%);
@@ -59,14 +140,14 @@
 .vignette-overlay {
   position: absolute;
   inset: 0;
-  z-index: 4;
-  background: radial-gradient(ellipse at center, transparent 48%, rgba(255, 255, 255, 0.34) 100%);
+  z-index: var(--z-bg-vignette);
+  background: radial-gradient(ellipse at center, transparent 58%, rgba(255, 255, 255, 0.13) 100%);
 }
 
 .grain-overlay {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: var(--z-bg-grain);
   opacity: 0.018;
   mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -85,7 +166,7 @@
   padding: 14px 16px 15px 18px;
   overflow: hidden;
   contain: paint;
-  border-left: 1px solid rgba(235, 98, 23, 0.14);
+  border-left: 2px solid rgba(235, 98, 23, 0.34);
   border-radius: 0 12px 12px 0;
   font-family: "JetBrains Mono", monospace;
   font-size: clamp(10px, 0.76vw, 12px);
@@ -107,7 +188,7 @@
   font-size: 8px;
   line-height: 1;
   letter-spacing: 0.22em;
-  color: rgba(235, 98, 23, 0.5);
+  color: rgba(235, 98, 23, 0.88);
 }
 
 .code-stream.is-typing .code-text:after {
@@ -126,24 +207,25 @@
 .code-stream.s3 { --r: 0.45deg; left: 4.5%; bottom: 10%; animation-delay: -4s; }
 .code-stream.s4 { --r: -0.6deg; right: 4%; bottom: 8%; animation-delay: -10s; }
 
-/* Same lightly-visible JSON treatment across every page and section. */
+/* Same JSON treatment across every page and section. */
 .code-streams,
-html.bg-quiet .code-streams,
 html.services-depth .code-streams {
-  opacity: 0.8;
+  opacity: 1;
   mix-blend-mode: normal;
+}
+
+/* Quiet sections still pull back, but at the container so the per-panel
+   tween underneath keeps running. */
+html.bg-quiet .code-streams {
+  opacity: 0.66;
 }
 
 .code-stream,
 html.bg-quiet .code-stream,
 html.services-depth .code-stream {
-  opacity: 0.75 !important;
-  color: rgba(100, 116, 139, 0.55);
+  opacity: 0.72;
+  color: rgba(71, 85, 105, 0.84);
   text-shadow: none;
-}
-
-html.bg-quiet .code-stream {
-  opacity: 0.4 !important;
 }
 
 @keyframes codeAmbientFloat {
@@ -176,13 +258,13 @@ html.bg-quiet .code-stream {
   left: 0;
   right: 0;
   top: 0;
-  z-index: 50;
+  z-index: var(--z-nav);
   height: 72px;
   display: flex;
   align-items: center;
   gap: 30px;
   padding: 12px clamp(18px, 3.2vw, 44px);
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(20px) saturate(1.6);
   -webkit-backdrop-filter: blur(20px) saturate(1.6);
   border-bottom: 1px solid var(--border-soft);
@@ -190,7 +272,7 @@ html.bg-quiet .code-stream {
 }
 .navbar.is-compact {
   height: 54px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid var(--border-soft);
 }
 .brand-logo {
@@ -210,7 +292,7 @@ html.bg-quiet .code-stream {
   padding: 5px;
   border: 1px solid var(--border-soft);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.82);
 }
 .desktop-nav a {
   padding: 8px 13px;
@@ -232,7 +314,7 @@ html.bg-quiet .code-stream {
   height: 42px;
   border-radius: 50%;
   border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   color: var(--text-nav);
   align-items: center;
   justify-content: center;
@@ -247,7 +329,7 @@ html.bg-quiet .code-stream {
   left: 0;
   right: 0;
   height: 2px;
-  z-index: 70;
+  z-index: var(--z-progress);
   background: rgba(0, 0, 0, 0.04);
 }
 .scroll-progress i {
@@ -264,7 +346,7 @@ html.bg-quiet .code-stream {
 .loader {
   position: fixed;
   inset: 0;
-  z-index: 100;
+  z-index: var(--z-loader);
   background: #ffffff;
   display: flex;
   align-items: center;
@@ -297,7 +379,7 @@ html.bg-quiet .code-stream {
 .route-transition {
   position: fixed;
   inset: 0;
-  z-index: 95;
+  z-index: var(--z-transition);
   overflow: hidden;
   background: radial-gradient(circle at 50% 42%, rgba(247, 133, 63, 0.12), transparent 60%), rgba(255, 255, 255, 0.96);
   opacity: 0;
@@ -313,7 +395,7 @@ html.bg-quiet .code-stream {
   position: fixed;
   top: 20px;
   left: clamp(18px, 3.2vw, 44px);
-  z-index: 30;
+  z-index: var(--z-sticky);
   width: clamp(72px, 6.2vw, 96px);
   display: block;
   opacity: 0;
@@ -352,7 +434,7 @@ html.bg-quiet .code-stream {
   position: fixed;
   right: clamp(18px, 2.4vw, 34px);
   bottom: max(22px, env(safe-area-inset-bottom));
-  z-index: 45;
+  z-index: var(--z-floating-ui);
   display: grid;
   place-items: center;
   width: 54px;
@@ -361,9 +443,9 @@ html.bg-quiet .code-stream {
   border: 1px solid rgba(235, 98, 23, 0.25);
   border-radius: 999px;
   color: var(--accent);
-  background: rgba(255, 255, 255, 0.85);
-  box-shadow: 0 10px 30px rgba(235, 98, 23, 0.14), var(--highlight-top);
-  backdrop-filter: blur(14px);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--glass-shadow), var(--highlight-top);
+  backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: blur(14px);
   touch-action: manipulation;
   cursor: pointer;
@@ -454,7 +536,7 @@ html.bg-quiet .code-stream {
   position: fixed;
   top: 22px;
   right: clamp(18px, 3.2vw, 44px);
-  z-index: 40;
+  z-index: var(--z-overlay);
   display: inline-flex;
   align-items: center;
   gap: 8px;

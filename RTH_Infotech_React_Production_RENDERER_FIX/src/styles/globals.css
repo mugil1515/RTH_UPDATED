@@ -14,8 +14,12 @@
   --bg-cool: #f2f4f8;
   --surface: #ffffff;
   --surface-soft: #f8f9fb;
-  --surface-white: rgba(255, 255, 255, 0.82);
-  --surface-glass: rgba(255, 255, 255, 0.65);
+  /* Cards and panels must read as their own physical layer sitting ON the
+     page, not as glass with a 3D scene living inside them. At 0.82 the
+     automation geometry was clearly legible through card copy; 0.95 keeps
+     the frosted feel while making the surface win. */
+  --surface-white: rgba(255, 255, 255, 0.9);
+  --surface-glass: rgba(255, 255, 255, 0.82);
 
   /* Text */
   --text: #111111;
@@ -57,6 +61,53 @@
   --highlight-top: inset 0 1px rgba(255, 255, 255, 0.7);
 
   --radius-card: 20px;
+
+  /* ------------------------------------------------------------------
+     LAYER SCALE
+
+     One ordered scale for the whole site, so stacking is a decision made
+     here rather than by whoever last typed a number into a component.
+     The values match the order the site already had; what changed is that
+     they now have names and a single place to read them from.
+
+     The three bands that matter for the foreground/background split:
+       bg      the fixed 3D canvas and its ambient overlays
+       content everything readable or interactive
+       ui      floating chrome that must clear content
+
+     Nothing readable may ever live below --z-content.
+     ------------------------------------------------------------------ */
+  /* One white-glass recipe for every major surface on the site. */
+  --glass-bg: rgba(255, 255, 255, 0.88);
+  --glass-bg-strong: rgba(255, 255, 255, 0.9);
+  --glass-blur: blur(20px) saturate(1.4);
+  --glass-border: 1px solid rgba(0, 0, 0, 0.06);
+  --glass-shadow: 0 12px 32px rgba(0, 0, 0, 0.05);
+  --glass-radius: 22px;
+
+  --z-bg: 0;
+  --z-content: 10;
+  --z-card: 20;
+  --z-sticky: 30;
+  --z-overlay: 40;
+  --z-floating-ui: 45;
+  --z-chat: 46;
+  --z-chat-panel: 47;
+  --z-nav: 50;
+  --z-progress: 70;
+  --z-modal: 90;
+  --z-transition: 95;
+  --z-loader: 100;
+
+  /* Sub-layers INSIDE .app-background, which is its own stacking context
+     at --z-bg. The content scrim sits above every ambient layer so that a
+     single mask governs everything the background draws. */
+  --z-bg-canvas: 0;
+  --z-bg-focus: 1;
+  --z-bg-vignette: 1;
+  --z-bg-code: 1;
+  --z-bg-scrim: 2;
+  --z-bg-grain: 2;
 }
 
 /* Tailwind v4 theme mapping — exposes the same tokens as utilities without
@@ -231,12 +282,44 @@ button {
 /* --------------------------------------------------------------------------
    Premium bright card + light glass
    -------------------------------------------------------------------------- */
-.glass-card {
-  background: var(--surface);
-  border: 1px solid var(--border-card);
-  box-shadow: var(--highlight-top), var(--shadow-card);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+/* The shared white-glass surface. Every card, panel and form on the site uses
+   this so the foreground reads as one consistent physical layer sitting above
+   the 3D scene. `position: relative` + --z-card is what puts it there. */
+.glass-card,
+.problem-chip,
+.status-stack,
+.industries-layout,
+.contact-form,
+.analyzer-result,
+.agent-log,
+.core-click-hint {
+  position: relative;
+  z-index: var(--z-card);
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  border-radius: var(--glass-radius);
+  box-shadow: var(--highlight-top), var(--glass-shadow);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* Surfaces carrying small or dense type get the opaque variant: 0.88 is enough
+   behind a headline, not behind 10px mono. */
+.invoice-card,
+.status-stack,
+.agent-log,
+.contact-form,
+.analyzer-result,
+.industries-layout {
+  background: var(--glass-bg-strong);
+}
+
+/* Keep every readable section above the fixed ambient scene, even when a
+   route is rendered without the utility class used by PageLayout. */
+main,
+.scene > * {
+  position: relative;
+  z-index: var(--z-content);
 }
 
 .accent-text {
