@@ -10,7 +10,11 @@ import "@/styles/chatbot.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter>
+    {/* Opting in to the v7 behaviours the router already warns about on every
+        boot. Both are no-ops for this app's routing (no splat-relative links,
+        no transition-sensitive route state) and they clear the only two
+        messages the console had left. */}
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

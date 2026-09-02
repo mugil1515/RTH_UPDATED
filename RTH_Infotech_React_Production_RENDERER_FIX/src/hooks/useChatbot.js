@@ -90,16 +90,30 @@ export default function useChatbot() {
       setIsCoreFocused(nearViewport && container.classList.contains("orbit-stable"));
       setIsServiceModalOpen(!!document.querySelector(".service-modal"));
     };
+    // getBoundingClientRect() forces a style/layout flush, so running `update`
+    // straight off the scroll event meant a synchronous layout read on every
+    // scroll event of the site's longest page. Coalescing to one read per frame
+    // gives the same answer at the same visual cadence without the thrash.
+    let frame = 0;
+    const scheduleUpdate = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        update();
+      });
+    };
+
     update();
-    const observer = new MutationObserver(update);
+    const observer = new MutationObserver(scheduleUpdate);
     observer.observe(container, { attributes: true, attributeFilter: ["class"], childList: true });
-    const bodyObserver = new MutationObserver(update);
+    const bodyObserver = new MutationObserver(scheduleUpdate);
     bodyObserver.observe(document.body, { childList: true });
-    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("scroll", scheduleUpdate, { passive: true });
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       observer.disconnect();
       bodyObserver.disconnect();
-      window.removeEventListener("scroll", update);
+      window.removeEventListener("scroll", scheduleUpdate);
     };
   }, [location.pathname]);
 
@@ -194,16 +208,23 @@ export default function useChatbot() {
     [goToSection, location.pathname, navigate],
   );
 
+  // These guard on `hideWidget`, NOT on `forceMinimizePanel`. The widget is
+  // genuinely off screen for the former, so refusing to open is honest; but
+  // `isCoreFocused` only auto-minimizes the panel while leaving the trigger
+  // fully visible and clickable, and guarding on it there turned that trigger
+  // into a dead button for the whole (145vh) Intelligence Core section. The
+  // auto-minimize effect above still runs on the way in — it just no longer
+  // overrides a visitor who then deliberately taps the button.
   const open = useCallback(() => {
-    if (forceMinimizePanel) return;
+    if (hideWidget) return;
     setIsOpen(true);
     setShowDiscovery(false);
-  }, [forceMinimizePanel]);
+  }, [hideWidget]);
   const close = useCallback(() => setIsOpen(false), []);
   const toggle = useCallback(() => {
-    if (forceMinimizePanel) return;
+    if (hideWidget) return;
     setIsOpen((v) => !v);
-  }, [forceMinimizePanel]);
+  }, [hideWidget]);
 
   const handleSuggestion = useCallback(
     (suggestion) => {

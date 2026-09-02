@@ -6,7 +6,7 @@ import useChatbot from "@/hooks/useChatbot";
 const CLOSE_ANIMATION_MS = 420;
 
 export default function Chatbot() {
-  const { isOpen, open, close, toggle, messages, isTyping, showDiscovery, handleSuggestion, sendText, hideWidget } = useChatbot();
+  const { isOpen, open, close, messages, isTyping, showDiscovery, handleSuggestion, sendText, hideWidget } = useChatbot();
   const [shouldRenderPanel, setShouldRenderPanel] = useState(false);
 
   useEffect(() => {

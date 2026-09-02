@@ -31,12 +31,28 @@ export default function PageLayout() {
       }
     };
 
-    window.addEventListener("scroll", saveHomePosition, { passive: true });
-    window.__rthLenis?.on("scroll", saveHomePosition);
+    // sessionStorage.setItem is a synchronous write, and this listener is bound
+    // to BOTH the native scroll event and Lenis' own — so writing directly from
+    // the handler meant two storage writes per scroll frame on the longest page
+    // of the site. Coalescing to one write per animation frame keeps the
+    // restore-position feature exactly as accurate (the value only has to be
+    // right at the moment of navigation) for a fraction of the cost.
+    let frame = 0;
+    const scheduleSave = () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        saveHomePosition();
+      });
+    };
+
+    window.addEventListener("scroll", scheduleSave, { passive: true });
+    window.__rthLenis?.on("scroll", scheduleSave);
     return () => {
+      if (frame) cancelAnimationFrame(frame);
       saveHomePosition();
-      window.removeEventListener("scroll", saveHomePosition);
-      window.__rthLenis?.off("scroll", saveHomePosition);
+      window.removeEventListener("scroll", scheduleSave);
+      window.__rthLenis?.off("scroll", scheduleSave);
     };
   }, [pathname]);
 

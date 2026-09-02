@@ -1,9 +1,17 @@
-import { useLayoutEffect, useRef } from "react";
-import ThreeBackground from "@/components/effects/ThreeBackground";
+import { lazy, Suspense, useLayoutEffect, useRef } from "react";
 import CodeStreams from "@/components/effects/CodeStreams";
 import GrainOverlay from "@/components/effects/GrainOverlay";
 import Vignette from "@/components/effects/Vignette";
 import { gsap, ScrollTrigger } from "@/animations/gsapConfig";
+
+// Three.js plus the whole automation scene is by far the largest thing the app
+// ships, and none of it is needed to paint the hero. Loading it as its own
+// chunk keeps it out of the critical bundle: the copy, the JSON panels and the
+// buttons are interactive while the scene is still arriving, and the scene then
+// fades in exactly where it always did (the canvas is fixed at --z-bg, so its
+// late arrival shifts nothing). The fallback is deliberately null — an empty
+// background layer is the correct "not yet" state here.
+const ThreeBackground = lazy(() => import("@/components/effects/ThreeBackground"));
 
 // Content safe zones — the foreground bounding boxes the 3D scene must not
 // compete with, per section.
@@ -302,11 +310,21 @@ export default function AppBackground({ routePath = "" }) {
       document.documentElement.classList.remove("bg-quiet");
       document.documentElement.classList.remove("services-depth");
     };
-  }, []);
+    // Every selector above (#problems, #services, #billing, ...) belongs to Home
+    // only, and this component is mounted once by PageLayout for the whole
+    // session. Bound once at mount, the focus/quiet/depth staging was therefore
+    // dead for anyone who entered the site on /about, /contact or a service page
+    // and then navigated Home — and worse, a trigger bound to a section that
+    // later unmounted (About renders its own #company) kept firing against a
+    // detached element, leaving html.bg-quiet stuck on. Re-binding per route is
+    // what makes the staging correct from any entry point.
+  }, [routePath]);
 
   return (
     <div className="app-background" aria-hidden="true">
-      <ThreeBackground />
+      <Suspense fallback={null}>
+        <ThreeBackground routePath={routePath} />
+      </Suspense>
       <CodeStreams />
       <div ref={focusRef} id="focus-layer" className="focus-layer" />
       <Vignette />

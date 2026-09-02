@@ -8,7 +8,16 @@ export default function ChatPanel({ open, messages, isTyping, onSelectSuggestion
   const panelRef = useRef(null);
 
   useEffect(() => {
-    if (!open) return undefined;
+    if (!open) {
+      // The panel stays mounted through its close transition, marked
+      // aria-hidden. If the textarea (or a suggestion chip) still holds focus
+      // at that moment the browser refuses the aria-hidden and logs it — and,
+      // worse, keyboard focus is left parked inside a panel the user has just
+      // dismissed. Hand focus back to the document before the flag goes on.
+      const active = document.activeElement;
+      if (active && panelRef.current?.contains(active)) active.blur();
+      return undefined;
+    }
     const onKeyDown = (e) => {
       if (e.key === "Escape") onClose();
     };

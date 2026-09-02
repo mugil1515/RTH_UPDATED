@@ -159,7 +159,7 @@
 .vis-devops .devops-track { position: absolute; left: 3%; right: 3%; bottom: 3%; height: 52px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; }
 .vis-devops .dev-stage { position: relative; z-index: 3; text-align: center; opacity: 0.55; }
 .vis-devops .dev-stage b { display: block; font: 600 0.4rem/1 "JetBrains Mono", monospace; color: #eb6217; }
-.vis-devops .dev-stage small { display: block; margin-top: 4px; font: 0.35rem/1 "JetBrains Mono", monospace; color: #8a8a8e; }
+.vis-devops .dev-stage small { display: block; margin-top: 4px; font: 0.35rem/1 "JetBrains Mono", monospace; color: var(--text-muted); }
 .vis-devops .dev-flow-line { position: absolute; z-index: 1; left: 9%; right: 9%; top: 50%; height: 1px; background: linear-gradient(90deg, rgba(235, 98, 23, 0.12), #f7853f, #eb6217, #f7853f, rgba(235, 98, 23, 0.12)); }
 .vis-devops .dev-packet { position: absolute; z-index: 4; left: 9%; top: 50%; width: 8px; height: 8px; border-radius: 50%; transform: translate(-50%, -50%); background: #eb6217; box-shadow: 0 0 0 4px rgba(235, 98, 23, 0.14); animation: devPacket 3.2s ease-in-out infinite; }
 
@@ -178,17 +178,21 @@
 .vis-security .sr3 { left: 1%; top: 66%; }
 .vis-security .security-packet { position: absolute; z-index: 6; left: 15%; top: 24%; width: 7px; height: 7px; border-radius: 50%; background: #eb6217; box-shadow: 0 0 0 4px rgba(235, 98, 23, 0.12); animation: securityPacket 2.4s linear infinite; }
 .vis-security .sp2 { top: 46%; animation-delay: 0.8s; }
-.vis-security .threat-packet { top: 68%; background: #e0457b; box-shadow: 0 0 0 4px rgba(224, 69, 123, 0.14); animation-delay: 1.6s; }
-.vis-security .security-status { position: absolute; z-index: 6; right: 1%; top: 50%; transform: translateY(-50%); font: 600 0.42rem/1 "JetBrains Mono", monospace; letter-spacing: 0.12em; color: #8a8a8e; }
+/* The blocked-threat packet is the only element on the site that needs to read
+   as danger rather than brand. It used to do that in magenta (#e0457b), the one
+   hue on the page belonging to no palette; this is the red the contact form
+   already uses for its error state, so danger now has a single colour. */
+.vis-security .threat-packet { top: 68%; background: #c02640; box-shadow: 0 0 0 4px rgba(192, 38, 64, 0.14); animation-delay: 1.6s; }
+.vis-security .security-status { position: absolute; z-index: 6; right: 1%; top: 50%; transform: translateY(-50%); font: 600 0.42rem/1 "JetBrains Mono", monospace; letter-spacing: 0.12em; color: var(--text-muted); }
 
 /* Quality Engineering */
 .vis-qa .qa-panel { width: 88%; max-width: 320px; border-radius: 18px; padding: 15px 16px 16px; position: relative; }
 .vis-qa .qa-head { height: 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(0, 0, 0, 0.06); margin-bottom: 2px; }
 .vis-qa .qa-head b { font: 600 0.44rem/1 "JetBrains Mono", monospace; letter-spacing: 0.1em; color: #eb6217; }
-.vis-qa .qa-counter { font: 500 0.42rem/1 "JetBrains Mono", monospace; color: #8a8a8e; }
+.vis-qa .qa-counter { font: 500 0.42rem/1 "JetBrains Mono", monospace; color: var(--text-muted); }
 .vis-qa .qa-row { height: 32px; border-bottom: 1px solid rgba(0, 0, 0, 0.05); display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 9px; color: #1d1d1f; font-size: 0.54rem; }
 .vis-qa .qa-row b { font-weight: 500; }
-.vis-qa .qa-row em { font: 500 0.38rem/1 "JetBrains Mono", monospace; color: #8a8a8e; font-style: normal; letter-spacing: 0.08em; }
+.vis-qa .qa-row em { font: 500 0.38rem/1 "JetBrains Mono", monospace; color: var(--text-muted); font-style: normal; letter-spacing: 0.08em; }
 .vis-qa .qa-check { position: relative; width: 16px; height: 16px; border-radius: 50%; border: 1px solid rgba(235, 98, 23, 0.28); display: grid; place-items: center; }
 .vis-qa .qa-check:after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 0.48rem; color: #eb6217; opacity: 0; animation: qaCheck 4s infinite; }
 .vis-qa .qa-row:nth-child(2) .qa-check:after { animation-delay: 0.6s; }

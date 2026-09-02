@@ -30,8 +30,11 @@ import {
 // This component owns the renderer, camera, clock, lights and render loop.
 // It adds no pin, no scrub and no scroll length -- scroll speed and pinned
 // sections are untouched.
-export default function ThreeBackground() {
+export default function ThreeBackground({ routePath = "" }) {
   const ref = useRef(null);
+  // Populated by the mount-once effect below, called by the per-route effect
+  // after it. Effects run in declaration order, so it is always set in time.
+  const bindSectionTriggersRef = useRef(null);
 
   useEffect(() => {
     const canvas = ref.current;
@@ -71,7 +74,18 @@ export default function ThreeBackground() {
 
     const pixelRatioCap = lowPower ? 1.1 : 1.45;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
-    renderer.setSize(window.innerWidth, window.innerHeight, false);
+
+    // Size from the canvas's own laid-out box, not from window.innerWidth.
+    // innerWidth includes the classic scrollbar gutter, so on any desktop that
+    // shows one the drawing buffer and the camera aspect described a viewport a
+    // few pixels wider than the element actually occupies, and CSS then
+    // stretched the render to fit.
+    const viewport = () => ({
+      width: canvas.clientWidth || window.innerWidth,
+      height: canvas.clientHeight || window.innerHeight,
+    });
+    const initialViewport = viewport();
+    renderer.setSize(initialViewport.width, initialViewport.height, false);
 
     // Colour management is ON. It was previously disabled because the
     // transmitted physical meshes rendered almost black under it -- but that
@@ -106,7 +120,7 @@ export default function ThreeBackground() {
     const studio = createStudioEnvironment(renderer);
     scene.environment = studio.texture;
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 240);
+    const camera = new THREE.PerspectiveCamera(45, initialViewport.width / initialViewport.height, 0.1, 240);
     camera.position.set(0, STAGE_A_Y + 3.6, 14.4);
     const clock = new THREE.Clock();
 
@@ -268,68 +282,85 @@ export default function ThreeBackground() {
       onUpdate: (self) => { pageProgress = self.progress; },
     }));
 
-    // One trigger per section, purely as a read of which section is on screen.
-    // These add no pinning, no scrub and no scroll length - they only decide
-    // what the background looks like at a given point.
-    SECTION_MOODS.forEach(({ id, energy, spread, calm, veil }) => {
-      const element = document.getElementById(id);
-      if (!element) return;
-      const apply = () => {
-        moodTween?.kill();
-        moodTween = gsap.to(mood, {
-          energy, spread, calm, veil,
-          duration: 1.1,
-          ease: "power2.out",
-          overwrite: true,
-        });
-        setSection(id);
-      };
-      triggers.push(ScrollTrigger.create({
-        trigger: element,
-        start: "top 62%",
-        end: "bottom 38%",
-        onEnter: apply,
-        onEnterBack: apply,
-      }));
-    });
+    // The section triggers below are bound to elements that exist only on the
+    // route that renders them — every one of them lives on Home. This component
+    // is mounted once by PageLayout and deliberately survives navigation (a
+    // WebGL context is far too expensive to rebuild per route), so binding them
+    // in this mount-once effect meant that entering the site on /about, /contact
+    // or a service page and then navigating Home left the scene with no section
+    // triggers at all: the mood never changed, the story beats never staged, and
+    // the whole scroll narrative silently did nothing for the rest of the visit.
+    //
+    // So trigger binding is exposed here and re-run per route by the effect
+    // below, while the renderer, scene and loop stay untouched.
+    bindSectionTriggersRef.current = () => {
+      const routeTriggers = [];
 
-    const serviceSection = document.querySelector("#services");
-    if (serviceSection) {
-      triggers.push(ScrollTrigger.create({
-        trigger: serviceSection,
-        start: "top bottom",
-        end: "bottom top",
-        onEnter: () => setServiceTransition(1),
-        onEnterBack: () => setServiceTransition(1),
-        onLeave: () => {},
-        onLeaveBack: () => setServiceTransition(0),
-      }));
-    }
+      // One trigger per section, purely as a read of which section is on screen.
+      // These add no pinning, no scrub and no scroll length - they only decide
+      // what the background looks like at a given point.
+      SECTION_MOODS.forEach(({ id, energy, spread, calm, veil }) => {
+        const element = document.getElementById(id);
+        if (!element) return;
+        const apply = () => {
+          moodTween?.kill();
+          moodTween = gsap.to(mood, {
+            energy, spread, calm, veil,
+            duration: 1.1,
+            ease: "power2.out",
+            overwrite: true,
+          });
+          setSection(id);
+        };
+        routeTriggers.push(ScrollTrigger.create({
+          trigger: element,
+          start: "top 62%",
+          end: "bottom 38%",
+          onEnter: apply,
+          onEnterBack: apply,
+        }));
+      });
 
-    const billingSection = document.querySelector("#billing");
-    if (billingSection) {
-      triggers.push(ScrollTrigger.create({
-        trigger: billingSection,
-        start: "top bottom",
-        end: "bottom top",
-        scrub: true,
-        onEnter: () => { billingMode = true; },
-        onEnterBack: () => { billingMode = true; },
-        onLeave: () => {
-          billingMode = false;
-          billingProgress = 1;
-        },
-        onLeaveBack: () => {
-          billingMode = false;
-          billingProgress = 0;
-        },
-        onUpdate: (self) => {
-          billingProgress = self.progress;
-          const early = smootherstep(Math.min(1, self.progress / 0.24));
-          serviceTransition = 1 - early;
-        },
-      }));
-    }
+      const serviceSection = document.querySelector("#services");
+      if (serviceSection) {
+        routeTriggers.push(ScrollTrigger.create({
+          trigger: serviceSection,
+          start: "top bottom",
+          end: "bottom top",
+          onEnter: () => setServiceTransition(1),
+          onEnterBack: () => setServiceTransition(1),
+          onLeave: () => {},
+          onLeaveBack: () => setServiceTransition(0),
+        }));
+      }
+
+      const billingSection = document.querySelector("#billing");
+      if (billingSection) {
+        routeTriggers.push(ScrollTrigger.create({
+          trigger: billingSection,
+          start: "top bottom",
+          end: "bottom top",
+          scrub: true,
+          onEnter: () => { billingMode = true; },
+          onEnterBack: () => { billingMode = true; },
+          onLeave: () => {
+            billingMode = false;
+            billingProgress = 1;
+          },
+          onLeaveBack: () => {
+            billingMode = false;
+            billingProgress = 0;
+          },
+          onUpdate: (self) => {
+            billingProgress = self.progress;
+            const early = smootherstep(Math.min(1, self.progress / 0.24));
+            serviceTransition = 1 - early;
+          },
+        }));
+      }
+
+      return () => routeTriggers.forEach((trigger) => trigger.kill());
+    };
 
     const onPointer = (event) => {
       pointerTargetX = event.clientX / window.innerWidth - 0.5;
@@ -341,15 +372,31 @@ export default function ThreeBackground() {
       pointerTargetX = touch.clientX / window.innerWidth - 0.5;
       pointerTargetY = touch.clientY / window.innerHeight - 0.5;
     };
+    // The last viewport this actually re-laid the scene for. Mobile browsers
+    // fire `resize` every time the URL bar collapses or expands, i.e. on
+    // ordinary scrolling — and ScrollTrigger.refresh() re-measures every
+    // trigger on the page, which is the single most expensive thing this
+    // component can ask for. Resizing the renderer and camera on every event is
+    // cheap and must still happen; the refresh is reserved for a change that
+    // can genuinely have moved trigger boundaries.
+    let lastWidth = window.innerWidth;
+    let lastHeight = window.innerHeight;
+    const URL_BAR_TOLERANCE = 140;
+
     const resize = () => {
       if (resizeRaf) return;
       resizeRaf = requestAnimationFrame(() => {
         resizeRaf = 0;
-        camera.aspect = window.innerWidth / window.innerHeight;
+        const { width, height } = viewport();
+        camera.aspect = width / height;
         camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight, false);
+        renderer.setSize(width, height, false);
         measureFraming();
-        ScrollTrigger.refresh();
+
+        const layoutChanged = width !== lastWidth || Math.abs(height - lastHeight) > URL_BAR_TOLERANCE;
+        lastWidth = width;
+        lastHeight = height;
+        if (layoutChanged) ScrollTrigger.refresh();
       });
     };
 
@@ -427,25 +474,32 @@ export default function ThreeBackground() {
       renderer.render(scene, camera);
     };
 
-    window.__rth = { scene, camera, renderer, automation, render, THREE, mood, sections };
+    // Dev-only inspection handle. Shipping it kept the entire scene graph,
+    // renderer and three namespace reachable from the console (and pinned in
+    // memory) on the production site for no benefit.
+    if (import.meta.env.DEV) {
+      window.__rth = { scene, camera, renderer, automation, render, THREE, mood, sections };
+    }
     window.addEventListener("resize", resize);
     if (!mobile) {
       window.addEventListener("mousemove", onPointer, { passive: true });
       window.addEventListener("touchmove", onTouch, { passive: true });
     }
 
-    // Measure once now, then track every refresh.
+    // Measure once now, then track every refresh. The refresh below fires the
+    // listener, so a single up-front measure() is enough — the extra
+    // measure()/refresh() pair that used to sit here re-walked every trigger on
+    // the page a second time during mount for an identical result.
     ScrollTrigger.addEventListener("refresh", measure);
     measure();
-
     ScrollTrigger.refresh();
-    measure();
     raf = requestAnimationFrame(render);
 
     return () => {
       cancelAnimationFrame(raf);
       reducedMotionQuery.removeEventListener("change", onMotionPreference);
       ScrollTrigger.removeEventListener("refresh", measure);
+      bindSectionTriggersRef.current = null;
       delete window.__rth;
       if (resizeRaf) cancelAnimationFrame(resizeRaf);
       transitionTween?.kill();
@@ -473,6 +527,16 @@ export default function ThreeBackground() {
       renderer.dispose();
     };
   }, []);
+
+  // Re-bind the section triggers for whichever route is now mounted. The scene,
+  // renderer and render loop above are untouched by this — only the reads of
+  // "which section is on screen" are rebuilt, against the elements that
+  // actually exist right now.
+  useEffect(() => {
+    const unbind = bindSectionTriggersRef.current?.();
+    ScrollTrigger.refresh();
+    return () => unbind?.();
+  }, [routePath]);
 
   return <canvas ref={ref} id="three-canvas" className="three-background" aria-hidden="true" />;
 }

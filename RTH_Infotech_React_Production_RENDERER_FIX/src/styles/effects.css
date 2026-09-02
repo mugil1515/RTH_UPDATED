@@ -19,13 +19,18 @@
 
 .app-background {
   position: fixed;
+  /* `inset: 0` is the only sizing this layer needs, and it is deliberately the
+     only sizing it has. The explicit 100vw it used to carry made the layer wider
+     than the content viewport wherever a classic scrollbar is present (100vw
+     includes the scrollbar gutter), so the 3D canvas and the edge-anchored JSON
+     panels sat a few pixels out of register with the copy behind which they
+     render — and every child reported as horizontal overflow. 100dvh had the
+     same problem vertically on mobile, where it re-resolves as the URL bar
+     collapses. */
   inset: 0;
   z-index: var(--z-bg);
   pointer-events: none;
   overflow: hidden;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
 }
 
 /* The canvas is decoration only: it must never intercept a click meant for a
@@ -264,6 +269,16 @@ html.service-detail-route .code-stream.s4 {
 }
 @media (max-width: 620px) {
   .code-stream { width: 76vw; }
+  /* One panel at 76vw is most of the screen, so at the shared 0.72 it started
+     reading as foreground copy rather than atmosphere — the one thing the JSON
+     layer must never do. Fewer panels was already handled above; this is the
+     matching drop in weight for the one that remains (brief §33). The
+     bg-quiet / services-depth selectors are repeated because the base rule
+     sets all three together, and a bare .code-stream here would lose to them
+     on specificity. */
+  .code-stream,
+  html.bg-quiet .code-stream,
+  html.services-depth .code-stream { opacity: 0.5; }
   .code-stream.s2 { display: none; }
   .code-stream.s1 { left: 5%; top: 19%; }
   html.service-detail-route .code-stream { opacity: 0.11 !important; }
@@ -439,6 +454,30 @@ html.service-detail-route .code-stream.s4 {
 @keyframes siteLogoIn {
   to { opacity: 1; }
 }
+/* The logo is fixed, so on narrow screens — where headings run nearly the full
+   width — every section title scrolls straight through it and the two merge.
+   (The right-hand BACK/HOME pill never had this problem: it already carries its
+   own white glass.) This is the same feathered treatment the content scrim uses,
+   just anchored to the mark: a soft white plate that keeps both the logo and the
+   type behind it legible, with no hard edge and no visible chip. Wide screens
+   centre their headings well clear of the corner, so they don't get it. */
+@media (max-width: 760px) {
+  .site-logo::before {
+    content: "";
+    position: absolute;
+    inset: -42% -34%;
+    z-index: -1;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      rgba(255, 255, 255, 0.97),
+      rgba(255, 255, 255, 0.86) 58%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    pointer-events: none;
+  }
+}
+
 @media (max-width: 600px) {
   .site-logo { top: 14px; left: 14px; width: 68px; }
 }

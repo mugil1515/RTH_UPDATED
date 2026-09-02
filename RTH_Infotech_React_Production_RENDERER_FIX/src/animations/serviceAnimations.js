@@ -28,8 +28,17 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
     };
 
     updateLabelPositions();
-    spin = gsap.to(".service-rotor", { rotation: 360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%", onUpdate: updateLabelPositions });
-    counter = gsap.to(".service-node-content", { rotation: -360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
+    // The endless orbit rotation is decorative, and it is the one piece of
+    // motion on this page that never stops on its own — the CSS
+    // prefers-reduced-motion block can't reach it because it is driven by GSAP.
+    // Under a reduced-motion preference the orbit is simply laid out and left
+    // still; every node, label and connector stays exactly where it is, so the
+    // section reads and behaves identically.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!reducedMotion) {
+      spin = gsap.to(".service-rotor", { rotation: 360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%", onUpdate: updateLabelPositions });
+      counter = gsap.to(".service-node-content", { rotation: -360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
+    }
 
     if (compact || !hintEl) {
       // Compact usage (e.g. the standalone /services page hero) keeps a simple
@@ -144,16 +153,39 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
     // allowed to skip; capping each frame's advance guarantees it always
     // plays through every step even after a real stall (it just catches up
     // at a bounded rate rather than teleporting to the end).
+    //
+    // The cap has a cost, though, and it is the reason for the wall-clock
+    // guard below. Because each frame may only advance the timeline by
+    // MAX_FRAME_DELTA, a device rendering at 12fps advances it at ~40% of real
+    // time — and the 12 service nodes are `pointer-events: none` until this
+    // timeline finishes (`.orbit-stable`). On a slow device that turned the
+    // site's primary navigation into a dead zone for several seconds. So the
+    // reveal is capped in wall-clock time too: however slowly the frames
+    // arrive, the orbit is interactive within REVEAL_MAX_WALL_MS.
     const MAX_FRAME_DELTA = 1 / 30;
-    const driveReveal = (_time, deltaMs) => {
-      const next = revealTl.time() + Math.min(deltaMs / 1000, MAX_FRAME_DELTA);
-      if (next >= revealTl.duration()) {
-        revealTl.time(revealTl.duration());
-        gsap.ticker.remove(driveReveal);
-      } else {
-        revealTl.time(next);
-      }
+    const REVEAL_MAX_WALL_MS = 2600;
+    let revealStartedAt = 0;
+
+    // Finishing is asserted here rather than left to the timeline's own
+    // onComplete: this timeline is paused and scrubbed with .time(), and
+    // completion callbacks on a paused animation are not a contract worth
+    // resting the whole section's interactivity on. onComplete stays as well —
+    // adding the class twice is harmless.
+    const finishReveal = () => {
+      revealTl.time(revealTl.duration());
+      gsap.ticker.remove(driveReveal);
+      root.classList.add("orbit-stable");
     };
+
+    function driveReveal(_time, deltaMs) {
+      if (performance.now() - revealStartedAt > REVEAL_MAX_WALL_MS) {
+        finishReveal();
+        return;
+      }
+      const next = revealTl.time() + Math.min(deltaMs / 1000, MAX_FRAME_DELTA);
+      if (next >= revealTl.duration()) finishReveal();
+      else revealTl.time(next);
+    }
 
     // No pin: the Core is never locked in place, so there is nothing that
     // can suddenly grab the page and snap it back -- scrolling stays
@@ -168,7 +200,15 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
     const playOnce = () => {
       if (hasPlayed) return;
       hasPlayed = true;
+      // Under a reduced-motion preference the orbit arrives assembled. The
+      // twelve nodes flying out from the core is decorative travel, and it is
+      // also the slowest thing on the page to become interactive.
+      if (reducedMotion) {
+        finishReveal();
+        return;
+      }
       revealTl.time(0);
+      revealStartedAt = performance.now();
       gsap.ticker.add(driveReveal);
     };
     ScrollTrigger.create({

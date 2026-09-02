@@ -7,24 +7,24 @@
    surface, border, shadow and accent in the site resolves from this block.
    ========================================================================== */
 :root {
-  /* Surfaces */
+  /* Surfaces. The card/panel surface itself is --glass-bg / --glass-bg-strong
+     further down; the five superseded surface tokens that used to sit here
+     (--bg-cool, --surface, --surface-soft, --surface-white, --surface-glass)
+     were left over from before that consolidation and referenced by nothing. */
   --bg: #ffffff;
   --bg-secondary: #f5f5f7;
   --bg-soft: #f8f9fb;
-  --bg-cool: #f2f4f8;
-  --surface: #ffffff;
-  --surface-soft: #f8f9fb;
-  /* Cards and panels must read as their own physical layer sitting ON the
-     page, not as glass with a 3D scene living inside them. At 0.82 the
-     automation geometry was clearly legible through card copy; 0.95 keeps
-     the frosted feel while making the surface win. */
-  --surface-white: rgba(255, 255, 255, 0.9);
-  --surface-glass: rgba(255, 255, 255, 0.82);
 
   /* Text */
   --text: #111111;
   --text-secondary: #6e6e73;
-  --text-muted: #8a8a8e;
+  /* Was #8a8a8e, which is 3.4:1 on white — this token carries the smallest type
+     on the site (7-9px mono labels, the footer, the process log, placeholders),
+     which is exactly the text that can least afford it. #76767b is the same
+     neutral hue at 4.5:1, the AA floor for normal-size text. The hierarchy
+     against --text-secondary is now carried by size and weight, which is how
+     these labels were already distinguished. */
+  --text-muted: #76767b;
   --text-nav: #1d1d1f;
 
   /* Lines */
@@ -47,20 +47,15 @@
   --accent-bright: var(--rth-orange-bright);
   --accent-ink: var(--rth-orange-ink);
   --accent-soft: var(--rth-orange-light);
-  --accent-tint: #ffe3ce;
   --accent-wash: var(--rth-orange-soft);
-  --accent-line: rgba(235, 98, 23, 0.15);
-  --accent-line-strong: rgba(235, 98, 23, 0.35);
 
-  /* Elevation */
+  /* Elevation. The card/panel shadow is --glass-shadow below; --shadow-glass,
+     --shadow-panel, --accent-tint, --accent-line, --accent-line-strong and
+     --radius-card were the pre-consolidation versions and had no readers. */
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.06);
   --shadow-card-hover: 0 18px 44px rgba(0, 0, 0, 0.1);
-  --shadow-glass: 0 8px 30px rgba(0, 0, 0, 0.05);
-  --shadow-panel: 0 20px 60px rgba(0, 0, 0, 0.08);
   --shadow-accent: 0 8px 24px rgba(235, 98, 23, 0.2);
   --highlight-top: inset 0 1px rgba(255, 255, 255, 0.7);
-
-  --radius-card: 20px;
 
   /* ------------------------------------------------------------------
      LAYER SCALE
@@ -400,9 +395,23 @@ main,
 .page-hero {
   position: relative;
   z-index: 10;
+  /* dvh follows the visible viewport as mobile browser chrome collapses; the vh
+     line is the fallback for engines without it. .scene already did this — these
+     two full-height blocks were the ones that had been missed, so on iOS they
+     reserved a screenful plus the URL bar. */
   min-height: 100vh;
+  min-height: 100dvh;
   padding: 130px 20px 60px;
   text-align: center;
+  /* The orbit's .service-rotor is a square that GSAP rotates continuously, so
+     its BOUNDING BOX sweeps out to ~1.41x its own width even though nothing
+     visible ever leaves the inscribed circle. On /services that pushed the
+     document 58-88px wider than the viewport on every screen below ~800px —
+     a real horizontal scrollbar produced entirely by an invisible box corner.
+     Clipping the x axis here removes it without touching the composition;
+     `clip` rather than `hidden` so the y axis stays visible and no scroll
+     container is created. */
+  overflow-x: clip;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 248, 243, 0.68));
 }
 
@@ -587,6 +596,16 @@ main,
   border-radius: 24px;
   text-align: center;
 }
+/* /about renders <Company/> and then its own Engineering Stack card, and both
+   print company.engineeringStack — so the identical six-item list appeared
+   twice, about 150px apart (the card's -120px top margin pulls them together).
+   The card is the page's dedicated treatment of that list, so the section's
+   inline copy of it stands down on this page only. Home is untouched: the
+   selector matches only where the card actually follows the section. */
+#company:has(+ .about-stack) .engineering-layer {
+  display: none;
+}
+
 .about-stack h2 {
   font: 700 clamp(1.8rem, 3vw, 2.7rem)/1.05 "Space Grotesk", sans-serif;
   letter-spacing: -0.03em;
@@ -604,6 +623,7 @@ main,
   position: relative;
   z-index: 10;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   align-items: center;

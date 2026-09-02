@@ -199,6 +199,10 @@
    -------------------------------------------------------------------------- */
 .services-section {
   min-height: 145vh;
+  /* Same rotating-square bounding box as .page-hero above. This was previously
+     only applied below 600px, which left the 601-900px band (small laptops and
+     portrait tablets) able to widen the document. */
+  overflow-x: clip;
 }
 .service-universe-wrap {
   display: flex;
@@ -1140,7 +1144,6 @@
   .problem-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 28px; }
   .problem-chip { min-height: 62px; padding: 13px; font-size: 0.7rem; gap: 9px; }
   .problem-chip i { width: 18px; height: 18px; }
-  .services-section { overflow-x: clip; }
   .service-universe-wrap { padding-top: 18px; gap: 44px; }
   /* Keep space for the outward-facing service names, not only the icons. */
   .service-orbit { width: min(calc(100vw - 92px), 74vh, 420px); height: min(calc(100vw - 92px), 74vh, 420px); }
