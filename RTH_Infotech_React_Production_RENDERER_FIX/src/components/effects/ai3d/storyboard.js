@@ -186,3 +186,96 @@ export const FALLBACK_PATH = [
   { p: 1, pos: CAMERA_KEYS[CAMERA_KEYS.length - 1].pos, look: CAMERA_KEYS[CAMERA_KEYS.length - 1].look },
 ];
 
+
+/* ===========================================================================
+ * SERVICE DETAIL ROUTES  (/services/:slug)
+ *
+ * These pages render none of Home's sections, so everything above resolves to
+ * nothing on them: resolveCameraPath() finds no anchors and falls back to
+ * FALLBACK_PATH, which runs the hero key -> the contact key, i.e. it walks the
+ * camera from Stage A (y 0) down to Stage C (y -24) as the visitor scrolls.
+ * At the same time the section weights never move, because the triggers that
+ * move them are bound to elements that only exist on Home — so `hero` stays at
+ * 1 and only Stage A is ever switched on.
+ *
+ * The two together are why the lower half of a service page rendered as a
+ * plain white sheet: measured live, the camera sat at y = -20.7 while the only
+ * lit geometry was twenty world units above it. Nothing was faint; there was
+ * nothing in frame at all.
+ *
+ * So service pages get their own short storyboard. It stays inside Stage A —
+ * the stage that already holds the legacy -> transform -> connected story —
+ * and dollies and rises instead of descending.
+ * ======================================================================== */
+
+// No yaw in any key: the composition is placed by translating the scene group
+// into the empty half of the page (see `framing.serviceX` in
+// ThreeBackground.jsx), which is deterministic, rather than by aiming the
+// camera off-centre, which drags the far modules out of frame with it.
+// Every key obeys the same framing rule as CAMERA_KEYS above: the machine is
+// whole in shot and about half the frame wide, with the other half left clear
+// for the copy. Distances are further out than they first appear they need to
+// be, because the manual/legacy lanes are 15 world units across — pulling in
+// far enough to make the core large cropped the legacy half of the very story
+// the hero is supposed to be telling (brief §3).
+export const SERVICE_CAMERA_PATH = [
+  // hero — closest of the three, the whole legacy -> connected span in frame
+  { p: 0, pos: [0, STAGE_A_Y + 2.8, 15.2], look: [0, STAGE_A_Y + 0.7, 0] },
+  // capabilities / engineering tools — up and back, the connected network
+  // spread around the edges of the card band
+  { p: 0.45, pos: [0, STAGE_A_Y + 3.6, 16.6], look: [0, STAGE_A_Y + 0.8, 0] },
+  // delivery process / footer — settle lower and closer again
+  { p: 1, pos: [0, STAGE_A_Y + 1.7, 15.0], look: [0, STAGE_A_Y - 0.3, 0.4] },
+];
+
+// Bright and barely veiled: a service page has no competing 3D story, and the
+// content-safe scrim in AppBackground.jsx does the readability work locally
+// rather than by dimming the whole scene (brief §1).
+export const SERVICE_MOOD = { energy: 1, spread: 1.02, calm: 0.1, veil: 0.06 };
+
+/**
+ * Section weights and beat gates for a service detail page, from its own
+ * scroll progress. Pure data in / data out, like everything else here.
+ *
+ * The blend is the point. Stage A holds all three halves of the story at once
+ * — the stalled manual lanes, the machine, and the connected systems — and
+ * which of them you see is decided by these weights, so the page can open on
+ * "fragmented" and resolve to "connected" without a second scene:
+ *
+ *   top     problems high, services low   legacy lanes stalled at their
+ *                                         hand-offs, systems scattered
+ *   middle  crossfade                     the lanes bend into the core
+ *   bottom  services high                 the connected ecosystem, lighting
+ *                                         one module at a time
+ *
+ * `hero` stays part-on throughout so the core itself never stops running.
+ * billing/agent/industries/analyzer/company/contact are pinned to 0: they
+ * belong to Stages B and C, which have no place on this route and whose
+ * being switched on is what would put the camera back over empty space.
+ */
+export function serviceStage(progress, sections = {}, beats = {}) {
+  const p = clamp01(progress);
+  // The transformation itself, as one eased crossfade across the page.
+  const connect = smoothstep(clamp01((p - 0.1) / 0.55));
+
+  sections.hero = 0.9 - connect * 0.32;
+  sections.problems = 0.58 * (1 - connect * 0.8);
+  // Kept below 0.2 at the top on purpose: `converge` in automationScene is
+  // services * 1.4, and anything higher would bend the legacy lanes into the
+  // core while the hero is still claiming they are fragmented.
+  sections.services = 0.18 + connect * 0.82;
+  sections.billing = 0;
+  sections.agent = 0;
+  sections.industries = 0;
+  sections.analyzer = 0;
+  sections.company = 0;
+  sections.contact = 0;
+
+  beats.intake = 0.72 + connect * 0.28;
+  beats.nodes = 0.36 + connect * 0.54;
+  // The A -> B -> C conduit leads to two stages that are switched off here, so
+  // running it would draw a bright ribbon into nothing.
+  beats.stream = 0;
+
+  return { sections, beats };
+}

@@ -12,12 +12,19 @@ import { createStudioEnvironment } from "@/components/effects/ai3d/studioEnviron
 import {
   FALLBACK_PATH,
   SECTION_MOODS,
+  SERVICE_CAMERA_PATH,
+  SERVICE_MOOD,
   evaluateBeats,
   resolveBeats,
   resolveCameraPath,
   sampleCamera,
+  serviceStage,
   smootherstep,
 } from "@/components/effects/ai3d/storyboard";
+
+// /services/:slug — the routes that render no Home section at all, and so need
+// their own camera path, staging and composition (see storyboard.js).
+const SERVICE_ROUTE = /^\/services\/[^/]+/;
 
 // The camera descends through the automation environment as the page scrolls:
 // Stage A (y 0) -> Stage B (y -12) -> Stage C (y -24).
@@ -223,7 +230,20 @@ export default function ThreeBackground({ routePath = "" }) {
     //   dolly  multiplies the camera distance — further back, smaller objects
     //   lift   raises camera and look target together, dropping the scene
     //          lower in frame so stacked content sits above it
-    const framing = { dolly: 1, lift: 0 };
+    //
+    // The `service*` tier is the same three levers for /services/:slug, on the
+    // breakpoints that page's own layout uses (brief §12-§14) rather than the
+    // 760/1200 pair above, which gates geometry detail at construction:
+    //   serviceX  slides the whole scene group sideways into the empty half of
+    //             the page. This is the composition lever — the copy column
+    //             owns the left, so the machine is moved right rather than
+    //             dimmed where the words are (brief §5).
+    //             It is a FRACTION of the camera's visible half-width, not a
+    //             world distance: the scene has to clear the copy column by
+    //             the same proportion of the frame on a 1280 laptop and a
+    //             2560 monitor, and a fixed offset only lines up on whichever
+    //             viewport it was tuned against.
+    const framing = { dolly: 1, lift: 0, serviceX: 0, serviceLift: 0, serviceDolly: 1 };
     const measureFraming = () => {
       const w = window.innerWidth;
       if (w < 760) {
@@ -236,8 +256,37 @@ export default function ThreeBackground({ routePath = "" }) {
         framing.dolly = 1;
         framing.lift = 0;
       }
+
+      if (w <= 640) {
+        // Nothing beside the content column to move into, so the only honest
+        // levers are distance and height — but not so far that the concept
+        // stops being readable (brief §13).
+        framing.serviceX = 0;
+        framing.serviceLift = 0.5;
+        framing.serviceDolly = 1.22;
+      } else if (w <= 1024) {
+        framing.serviceX = 0.17;
+        framing.serviceLift = 0.25;
+        framing.serviceDolly = 1.08;
+      } else {
+        // Desktop: the service-detail grid is 1fr 1fr, so the right half of
+        // the hero and the outer margins below it are open the whole way down.
+        // 0.34 of the half-width puts the left end of the manual/legacy lanes
+        // at roughly 40% across — clear of the heading, which stops near 36%.
+        framing.serviceX = 0.34;
+        framing.serviceLift = 0;
+        framing.serviceDolly = 0.98;
+      }
     };
     measureFraming();
+
+    // Set by bindSectionTriggers below, read by the render loop. A plain
+    // closure variable rather than a ref: both live in this effect. The
+    // per-route effect runs immediately after this one and always before the
+    // first animation frame, so `false` here is only ever a placeholder.
+    let serviceMode = false;
+    const serviceSections = { ...DEFAULT_SECTIONS };
+    const serviceBeats = {};
 
     let pointerTargetX = 0;
     let pointerTargetY = 0;
@@ -293,7 +342,25 @@ export default function ThreeBackground({ routePath = "" }) {
     //
     // So trigger binding is exposed here and re-run per route by the effect
     // below, while the renderer, scene and loop stay untouched.
-    bindSectionTriggersRef.current = () => {
+    bindSectionTriggersRef.current = (path) => {
+      // A service detail page has none of the sections below, so there is
+      // nothing here to bind — and leaving it at that is exactly what left the
+      // scene frozen on stale weights while the fallback camera path walked it
+      // down to an unlit stage. It gets its own staging in the render loop
+      // instead; all this has to do is switch that on and set the mood, which
+      // reuses the same GSAP tween the section triggers use.
+      serviceMode = SERVICE_ROUTE.test(path || "");
+      if (serviceMode) {
+        moodTween?.kill();
+        moodTween = gsap.to(mood, {
+          ...SERVICE_MOOD,
+          duration: 0.9,
+          ease: "power2.out",
+          overwrite: true,
+        });
+        return () => {};
+      }
+
       const routeTriggers = [];
 
       // One trigger per section, purely as a read of which section is on screen.
@@ -413,10 +480,20 @@ export default function ThreeBackground({ routePath = "" }) {
       pointerX += (pointerTargetX - pointerX) * 0.055;
       pointerY += (pointerTargetY - pointerY) * 0.055;
 
-      const state = sampleCamera(cameraPath, pageProgress);
+      // Service pages steer by their own path and staging; every other route
+      // uses the measured, section-anchored storyboard exactly as before.
+      const state = sampleCamera(serviceMode ? SERVICE_CAMERA_PATH : cameraPath, pageProgress);
 
-      // Beat gates for this frame, from the measured section anchors.
-      evaluateBeats(beatPath, pageProgress, beats);
+      let liveSections = sections;
+      let liveBeats = beatPath.length ? beats : null;
+      if (serviceMode) {
+        serviceStage(pageProgress, serviceSections, serviceBeats);
+        liveSections = serviceSections;
+        liveBeats = serviceBeats;
+      } else {
+        // Beat gates for this frame, from the measured section anchors.
+        evaluateBeats(beatPath, pageProgress, beats);
+      }
 
       // Gentle parallax + a slow dolly; never a spin. The billing section adds
       // a small extra push-in rather than relocating the camera, so it layers
@@ -431,17 +508,19 @@ export default function ThreeBackground({ routePath = "" }) {
       // height: pull back so every object is smaller and further from the
       // type, and drop the whole scene lower in frame so the stacked heading
       // and card block sits above it rather than on top of it (brief §13).
-      const desiredPosZ = state.pos[2] * framing.dolly - billingPush;
+      const dolly = serviceMode ? framing.serviceDolly : framing.dolly;
+      const lift = serviceMode ? framing.serviceLift : framing.lift;
+      const desiredPosZ = state.pos[2] * dolly - billingPush;
 
       desiredPosition.set(
         state.pos[0] + pointerX * 0.5 * parallax + drift,
         state.pos[1] - pointerY * 0.32 * parallax
-          + Math.cos(elapsed * 0.13) * 0.1 * parallax + framing.lift,
+          + Math.cos(elapsed * 0.13) * 0.1 * parallax + lift,
         desiredPosZ,
       );
       desiredLook.set(
         state.look[0] + pointerX * 0.18 * parallax,
-        state.look[1] - pointerY * 0.12 * parallax + framing.lift,
+        state.look[1] - pointerY * 0.12 * parallax + lift,
         state.look[2],
       );
 
@@ -454,22 +533,54 @@ export default function ThreeBackground({ routePath = "" }) {
 
       automation.update(
         pageProgress, elapsed, delta, mood,
-        beatPath.length ? beats : null,
-        sections,
+        liveBeats,
+        liveSections,
         industry,
       );
 
-      // While the DOM service orbit is on screen, ease the environment back so
-      // the foreground UI stays clean. Softened from the previous -3.6 / 0.88:
-      // the scene now carries real content at that moment (the connected
-      // systems lighting one by one), and pushing it that far back was a large
-      // part of why the background read as washed out.
-      // Give the hero headline a clear central lane: the primary object stays
-      // visible around it, but sits lower and deeper while the hero is active.
-      const heroWeight = sections.hero || 0;
-      automation.root.position.y = -heroWeight * (mobile ? 1.8 : 1.15);
-      automation.root.position.z = -serviceTransition * 2.4 - heroWeight * (mobile ? 2.1 : 1.35);
-      automation.root.scale.setScalar(1 - serviceTransition * 0.06 - heroWeight * (mobile ? 0.08 : 0.035));
+      // Where the scene sits relative to the copy, per route.
+      if (serviceMode) {
+        // Composition, not opacity (brief §5). The copy column owns the left
+        // half of a service page and the cards below it are glass, so the
+        // scene is slid into the open centre/right and left at full size and
+        // full depth. None of the Home push-back below applies here: the two
+        // things it protects — the Home hero headline and the DOM service
+        // orbit — are not on this route at all, and applying it anyway is part
+        // of what made the background read as washed out.
+        //
+        // Visible half-width at the scene's own depth, so the offset below is
+        // read as a share of the frame rather than as world units.
+        const halfWidth = Math.tan((camera.fov * Math.PI) / 360)
+          * Math.abs(currentPosition.z) * camera.aspect;
+        // The shift is a hero move. It exists because the hero grid is
+        // `1fr 1fr` and the copy owns the left column — but below the hero the
+        // detail cards run the full width of the page, so there is no left
+        // half to clear and the open space is the outer margins on both sides.
+        // Holding the full offset down there would have parked the scene half
+        // off the right edge for no reason, so it eases most of the way back
+        // to centre as the card band takes over (brief §5).
+        const centred = smootherstep((pageProgress - 0.12) / 0.3);
+        const shiftX = halfWidth * framing.serviceX * (1 - centred * 0.66);
+        automation.root.position.x += (shiftX - automation.root.position.x) * damping;
+        automation.root.position.y += ((mobile ? -2.3 : -0.55) - automation.root.position.y) * damping;
+        automation.root.position.z += (0 - automation.root.position.z) * damping;
+        automation.root.scale.setScalar(mobile ? 0.88 : 1);
+      } else {
+        // While the DOM service orbit is on screen, ease the environment back
+        // so the foreground UI stays clean. Softened from the previous
+        // -3.6 / 0.88: the scene now carries real content at that moment (the
+        // connected systems lighting one by one), and pushing it that far back
+        // was a large part of why the background read as washed out.
+        // Give the hero headline a clear central lane: the primary object
+        // stays visible around it, but sits lower and deeper while the hero is
+        // active.
+        const heroWeight = sections.hero || 0;
+        // Eases back from whatever offset a service route left behind.
+        automation.root.position.x += (0 - automation.root.position.x) * damping;
+        automation.root.position.y = -heroWeight * (mobile ? 1.8 : 1.15);
+        automation.root.position.z = -serviceTransition * 2.4 - heroWeight * (mobile ? 2.1 : 1.35);
+        automation.root.scale.setScalar(1 - serviceTransition * 0.06 - heroWeight * (mobile ? 0.08 : 0.035));
+      }
 
       renderer.render(scene, camera);
     };
@@ -533,7 +644,7 @@ export default function ThreeBackground({ routePath = "" }) {
   // "which section is on screen" are rebuilt, against the elements that
   // actually exist right now.
   useEffect(() => {
-    const unbind = bindSectionTriggersRef.current?.();
+    const unbind = bindSectionTriggersRef.current?.(routePath);
     ScrollTrigger.refresh();
     return () => unbind?.();
   }, [routePath]);

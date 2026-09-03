@@ -515,14 +515,24 @@ main,
   gap: 18px;
   margin-top: 70px;
 }
+/* The glass is deliberately NOT opaque (brief §7): at 0.86 over blur(16px)
+   the card keeps a real sense of the scene moving behind it while the copy
+   on it stays at full contrast.
+   The second, wide, blurred white shadow is the local content-safe feather —
+   it bleeds the page colour a short way past the card edge, so the scene
+   ramps back up across ~40px of open page instead of stopping at a hard
+   rectangle (brief §2). It is a shadow rather than an overlay element
+   precisely because a shadow cannot have a visible edge. */
 .detail-sections > section {
   position: relative;
   z-index: var(--z-card);
   padding: 30px;
   border: 1px solid rgba(0, 0, 0, 0.06);
   border-radius: 22px;
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.05);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 12px 28px rgba(0, 0, 0, 0.05),
+    0 0 44px 12px rgba(255, 253, 251, 0.62);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -560,18 +570,86 @@ main,
   font: 600 0.62rem/1 "JetBrains Mono", monospace;
   color: var(--accent-ink);
 }
+/* Delivery process — 01 Audit -> 02 Prioritize -> 03 Connect + Automate ->
+   04 Measure.
+   The four steps describe a flow and were drawn as four unconnected boxes, so
+   an orange workflow path now runs the width of the row and a pulse travels
+   it left to right (brief §4). The path sits at the vertical centre, BEHIND
+   the step cards: the cards occlude it and only the gaps between them stay
+   open, so what the eye reads is a signal advancing from one step to the next
+   — and it never crosses a word, because the cards themselves are what mask
+   it. Nothing here is in the flow, so no step moves. */
 .process-row {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
 }
+/* Only while the four steps are genuinely side by side. Below 900px the row
+   reflows to two columns and below 600px to one, and a pulse crossing the
+   viewport left to right says nothing about a stack — it would just be a
+   stray rule through the middle of the block. */
+@media (min-width: 901px) {
+  .process-row::before,
+  .process-row::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    z-index: 0;
+    pointer-events: none;
+  }
+  .process-row::before {
+    left: 0;
+    right: 0;
+    height: 1px;
+    margin-top: -0.5px;
+    background: linear-gradient(
+      90deg,
+      rgba(235, 98, 23, 0) 0%,
+      rgba(235, 98, 23, 0.4) 12%,
+      rgba(235, 98, 23, 0.4) 88%,
+      rgba(235, 98, 23, 0) 100%
+    );
+  }
+  .process-row::after {
+    left: 0;
+    width: 34%;
+    height: 3px;
+    margin-top: -1.5px;
+    border-radius: 3px;
+    background: linear-gradient(
+      90deg,
+      rgba(235, 98, 23, 0) 0%,
+      rgba(235, 98, 23, 0.85) 55%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    animation: processFlow 5.2s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+  }
+}
+@keyframes processFlow {
+  0% { transform: translateX(-34%); opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { transform: translateX(294%); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .process-row::after { animation: none; opacity: 0.55; }
+}
+
+/* Glass, like every other panel on the page, so the workflow path and the
+   scene behind it stay faintly present through the step rather than being
+   walled off by an opaque fill (brief §7). */
 .process-row > span {
   position: relative;
+  z-index: 1;
   min-height: 76px;
   padding: 15px;
   border: 1px solid var(--border-card);
   border-radius: 14px;
-  background: var(--bg-soft);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   font-size: 0.74rem;
   color: var(--text-secondary);
   display: flex;

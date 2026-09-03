@@ -31,10 +31,19 @@
   align-items: center;
   justify-content: center;
 }
+/* These panels sit directly over the 3D story on a service detail page, so
+   they need a silhouette of their own or they dissolve into it: a warm-grey
+   edge instead of a neutral hairline, and a wide soft white halo that feathers
+   the scene back a short way around each panel. The halo is the same local
+   content-safe trick the detail cards use (globals.css) — a blurred shadow,
+   which by construction cannot show a hard edge (brief §2, §9). */
 .sd-visual .svx-glass {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: inset 0 1px rgba(255, 255, 255, 0.9), 0 12px 28px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(66, 60, 52, 0.11);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.95),
+    0 12px 28px rgba(0, 0, 0, 0.06),
+    0 0 34px 10px rgba(255, 253, 251, 0.66);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
 }
@@ -203,14 +212,32 @@
 .vis-qa .qa-progress i { display: block; width: 100%; height: 100%; transform-origin: left center; background: linear-gradient(90deg, #eb6217, #f7853f); animation: qaProgress 4s ease-in-out infinite; }
 
 /* Digital Transformation */
+/* Digital transformation — LEGACY / FRAGMENTED -> DIGITAL / CONNECTED.
+   Both halves have to be recognizable as states, not just as "left panel" and
+   "right panel" (brief §3). The legacy side is muted, its blocks sit at
+   staggered widths and are separated by a dashed rule — independent, broken
+   workflow. The connected side is squared up, in register, with live orange
+   rows. The pipeline between them carries the direction. */
 .vis-digital .legacy, .vis-digital .smart { position: absolute; width: 34%; max-width: 150px; height: 60%; max-height: 170px; border-radius: 18px; padding: 14px; }
-.vis-digital .legacy { left: 4%; opacity: 0.7; filter: saturate(0.4); }
-.vis-digital .smart { right: 4%; box-shadow: 0 14px 34px rgba(235, 98, 23, 0.14); }
-.vis-digital .d-block { height: 22px; border-radius: 7px; margin: 7px 0; background: #f2f4f8; border: 1px solid rgba(0, 0, 0, 0.05); }
-.vis-digital .legacy .d-block { background: #f5f5f7; }
-.vis-digital .smart .d-block { background: linear-gradient(90deg, #ffe3ce, #f8f9fb); animation: dSmart 3s ease-in-out infinite alternate; }
-.vis-digital .d-arrow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #eb6217; font-size: 1.4rem; }
-.vis-digital .d-packet { left: 46%; top: 50%; animation: dPacket 2.6s ease-in-out infinite; }
+.vis-digital .legacy { left: 4%; opacity: 0.94; filter: saturate(0.25); }
+.vis-digital .smart { right: 4%; box-shadow: inset 0 1px rgba(255, 255, 255, 0.95), 0 14px 34px rgba(235, 98, 23, 0.16), 0 0 34px 10px rgba(255, 253, 251, 0.66); }
+.vis-digital .d-block { height: 22px; border-radius: 7px; margin: 7px 0; background: #eceef3; border: 1px solid rgba(0, 0, 0, 0.07); }
+/* Ragged widths + a broken rule between them: disconnected applications, each
+   holding its own data, with no path from one to the next. */
+.vis-digital .legacy .d-block { background: #e9e9ee; border-color: rgba(0, 0, 0, 0.08); border-bottom: 1px dashed rgba(0, 0, 0, 0.14); }
+.vis-digital .legacy .d-block:nth-child(1) { width: 86%; }
+.vis-digital .legacy .d-block:nth-child(2) { width: 62%; margin-left: 18%; }
+.vis-digital .legacy .d-block:nth-child(3) { width: 74%; }
+.vis-digital .legacy .d-block:nth-child(4) { width: 54%; margin-left: 30%; }
+/* Squared up and in register, with the active rows pulsing in sequence. */
+.vis-digital .smart .d-block { background: linear-gradient(90deg, #ffd9bd, #fdf3ec); border-color: rgba(235, 98, 23, 0.16); animation: dSmart 3s ease-in-out infinite alternate; }
+.vis-digital .smart .d-block:nth-child(2) { animation-delay: 0.35s; }
+.vis-digital .smart .d-block:nth-child(3) { animation-delay: 0.7s; }
+.vis-digital .smart .d-block:nth-child(4) { animation-delay: 1.05s; }
+/* The transformation itself: one controlled pipeline, legacy -> connected. */
+.vis-digital:before { content: ""; position: absolute; left: 36%; right: 36%; top: 50%; height: 1px; margin-top: -0.5px; background: linear-gradient(90deg, rgba(235, 98, 23, 0) 0%, rgba(235, 98, 23, 0.45) 30%, rgba(235, 98, 23, 0.45) 70%, rgba(235, 98, 23, 0) 100%); }
+.vis-digital .d-arrow { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: #eb6217; font-size: 1.4rem; text-shadow: 0 0 12px rgba(255, 253, 251, 0.95); }
+.vis-digital .d-packet { left: 38%; top: 50%; margin-top: -3.5px; animation: dPacket 2.6s ease-in-out infinite; }
 
 @keyframes aiCore { 50% { transform: translate(-50%, -50%) rotate(225deg) scale(1.05); } }
 @keyframes orbitSpin { to { transform: rotate(360deg); } }
@@ -229,7 +256,11 @@
 @keyframes securityPacket { 0% { transform: translateX(0); opacity: 0; } 15% { opacity: 1; } 80% { opacity: 1; } to { transform: translateX(160px); opacity: 0; } }
 @keyframes qaCheck { 0%, 18% { opacity: 0; transform: scale(0.4); } 25%, 78% { opacity: 1; transform: scale(1); } to { opacity: 0; } }
 @keyframes qaProgress { 0% { transform: scaleX(0); } 60%, 100% { transform: scaleX(1); } }
-@keyframes dPacket { 0% { transform: translate(0); opacity: 0; } 20% { opacity: 1; } to { transform: translate(50px); opacity: 0; } }
+/* Travels the whole gap between the two panels rather than 50px of it, so the
+   packet reads as work actually crossing from legacy to connected. Driven on
+   `left` in percentages, like .dev-packet above, so it tracks the panels at
+   every viewport instead of covering a hardcoded distance. */
+@keyframes dPacket { 0% { left: 32%; opacity: 0; } 18% { opacity: 1; } 82% { opacity: 1; } to { left: 66%; opacity: 0; } }
 @keyframes dSmart { to { box-shadow: 0 8px 22px rgba(235, 98, 23, 0.1); } }
 
 @media (max-width: 640px) {

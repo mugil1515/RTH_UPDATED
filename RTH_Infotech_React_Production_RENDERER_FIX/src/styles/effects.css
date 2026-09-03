@@ -132,6 +132,18 @@
   );
 }
 
+/* Service detail routes. The focus veil exists to protect a Home section whose
+   copy runs edge to edge; a service page's copy is a half-width column with a
+   glass card band under it, and both are protected locally by the measured
+   scrim instead. So the veil opens up here: the wash starts further out and
+   peaks lower, which is what leaves the open centre/right actually open
+   (brief §1, §5). AppBackground.jsx clears GSAP's inline values on entry so
+   this tier is what applies. */
+html.service-detail-route .focus-layer {
+  --focus-strength: 0.32;
+  --focus-size: 64%;
+}
+
 .code-streams {
   position: absolute;
   inset: 0;
@@ -234,17 +246,39 @@ html.services-depth .code-stream {
 }
 
 /* Service-detail routes keep JSON alive at the outer edges. The measured
-   feathered scrim above handles all attenuation where content intersects it. */
+   feathered scrim above handles all attenuation where content intersects it,
+   so the panels no longer have to be pushed most of the way off screen AND
+   held at a whisper — doing both left the layer as a rumour. They sit half in
+   the page margin now, where there is nothing to compete with, and the scrim
+   takes them the rest of the way down wherever a card reaches them
+   (brief §11). JSON stays the lowest priority layer on the page. */
 html.service-detail-route .code-stream {
-  opacity: 0.16 !important;
+  opacity: 0.22 !important;
 }
+/* `.service-detail-page` is min(1320px, 100% - 48px), so below roughly 1500px
+   there is no outer margin left for a JSON panel to live in — it would be
+   sitting on the copy column, which is the one thing this layer must never do.
+   The default is therefore the conservative placement, and the panels only
+   move in to where they read once the page actually has margins to spare. */
 html.service-detail-route .code-stream.s1,
 html.service-detail-route .code-stream.s3 {
-  left: -10vw;
+  left: -18vw;
 }
+/* The right half of a service page is where the 3D story now lives, so the
+   panels on that side stay further out still, and dimmer: JSON is the
+   lowest-priority layer on the page and has no business crossing the subject
+   (brief §11). */
 html.service-detail-route .code-stream.s2,
 html.service-detail-route .code-stream.s4 {
-  right: -10vw;
+  right: -22vw;
+  opacity: 0.13 !important;
+}
+
+@media (min-width: 1500px) {
+  html.service-detail-route .code-stream.s1,
+  html.service-detail-route .code-stream.s3 { left: -6vw; }
+  html.service-detail-route .code-stream.s2,
+  html.service-detail-route .code-stream.s4 { right: -13vw; }
 }
 
 @keyframes codeAmbientFloat {
@@ -259,9 +293,9 @@ html.service-detail-route .code-stream.s4 {
 @media (max-width: 1100px) {
   .code-stream { width: min(300px, 28vw); max-height: 26vh; font-size: 10px; }
   html.service-detail-route .code-stream.s1,
-  html.service-detail-route .code-stream.s3 { left: -16vw; }
+  html.service-detail-route .code-stream.s3 { left: -20vw; }
   html.service-detail-route .code-stream.s2,
-  html.service-detail-route .code-stream.s4 { right: -16vw; }
+  html.service-detail-route .code-stream.s4 { right: -24vw; }
 }
 @media (max-width: 900px) {
   .code-stream { width: 42vw; max-height: 30vh; font-size: 9px; }

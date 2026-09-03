@@ -36,13 +36,40 @@ const ThreeBackground = lazy(() => import("@/components/effects/ThreeBackground"
 // contrast — large, heavy, near-black — while a card of 10px mono does not.
 // Over-masking the heading band erases the scene from the open upper half of
 // a section and buys no readability in return (brief §4, §19).
+// `edge` / `fx` / `fy` may be overridden per zone. Home's sections share one
+// setting because they share one shape: a centred column over a full-bleed
+// section. A service detail page does not — see the zone below.
 const SAFE_ZONES = [
+  // SERVICE DETAIL ROUTES.
+  //
+  // This zone used to run at a: 0.78 / b: 0.80 over `.detail-sections >
+  // section`, which is a full-width band: the measured ellipse came out at
+  // roughly 90% of the viewport and washed 80% white over the entire page.
+  // That is the "lower sections look like plain white pages" half of the
+  // problem, and raising the scene's own opacity underneath it could never
+  // have fixed it (brief §1).
+  //
+  // What replaces it is the observation that these cards do not need a scrim
+  // at all. `.detail-sections > section` is already rgba(255,255,255,0.82)
+  // over backdrop-filter: blur(16px) — glass that resolves to ~0.15 of the
+  // scene showing through, blurred, which is precisely the "directly behind
+  // large white cards" target in brief §1. The scrim's remaining job is only
+  // the band AROUND them, so `b` drops to a whisper and the card's own halo
+  // (globals.css) feathers the last few pixels.
+  //
+  // `head` is the one place that still needs real protection: the hero copy
+  // column has no surface of its own, just near-black type on open page. It
+  // keeps a moderate core and a tight fit, so it calms the left column and
+  // leaves the centre/right — where the scene now lives — untouched.
   {
     root: ".service-detail-page",
-    head: ".service-detail-grid > div:first-child",
-    body: ".service-detail-grid .sd-visual, .detail-sections > section",
-    a: 0.78,
-    b: 0.80,
+    head: ".back-link, .service-detail-grid > div:first-child",
+    body: ".detail-sections > section",
+    a: 0.54,
+    b: 0.15,
+    edge: 1.06,
+    fx: 26,
+    fy: 26,
   },
   { id: "hero", head: ".hero-title", body: ".hero-lead, .hero-ctas", a: 0.90, b: 0.78 },
   { id: "problems", head: ".section-heading", body: ".problem-grid, .problem-transform", a: 0.46, b: 0.50 },
@@ -128,9 +155,9 @@ export default function AppBackground({ routePath = "" }) {
       // panels here are close to the full width of the viewport, and any
       // multiplier large enough to protect a heading turns into an ellipse that
       // covers the whole screen and erases the scene everywhere.
-      const edge = 1.25;
-      const featherX = mobile ? 34 : 44;
-      const featherY = mobile ? 30 : 38;
+      const defaultEdge = 1.25;
+      const defaultFeatherX = mobile ? 34 : 44;
+      const defaultFeatherY = mobile ? 30 : 38;
 
       const active = zones.find((zone) => {
         const r = zone.el.getBoundingClientRect();
@@ -142,6 +169,10 @@ export default function AppBackground({ routePath = "" }) {
         write("--scrim-b-core", "0");
         return;
       }
+
+      const edge = active.edge ?? defaultEdge;
+      const featherX = active.fx ?? defaultFeatherX;
+      const featherY = active.fy ?? defaultFeatherY;
 
       [["a", active.head, active.a], ["b", active.body, active.b]].forEach(([slot, selector, strength]) => {
         const box = union(active.el, selector);
@@ -195,6 +226,24 @@ export default function AppBackground({ routePath = "" }) {
   useLayoutEffect(() => {
     const active = /^\/services\/[^/]+/.test(routePath);
     document.documentElement.classList.toggle("service-detail-route", active);
+
+    // The focus veil is tweened by GSAP, which writes its values as INLINE
+    // custom properties — so whatever Home last staged (down to
+    // --focus-strength 0.62 over #contact) followed the visitor onto a service
+    // page and stayed there for the rest of the visit, washing the scene the
+    // service route is supposed to show. Clearing the inline values hands the
+    // layer back to the stylesheet, where the service tier is declared.
+    const layer = focusRef.current;
+    if (active && layer) {
+      gsap.killTweensOf(layer);
+      ["--focus-x", "--focus-y", "--focus-strength", "--focus-size"]
+        .forEach((prop) => layer.style.removeProperty(prop));
+      // Same reasoning: bg-quiet is a class the Home triggers own, and a
+      // service page has no trigger that would ever turn it back off.
+      document.documentElement.classList.remove("bg-quiet");
+      document.documentElement.classList.remove("services-depth");
+    }
+
     return () => document.documentElement.classList.remove("service-detail-route");
   }, [routePath]);
 
