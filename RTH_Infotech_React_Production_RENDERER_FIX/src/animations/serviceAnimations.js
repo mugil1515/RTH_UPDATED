@@ -9,12 +9,24 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
   const speed={value:1};
   const applySpeed=()=>{spin?.timeScale(speed.value);counter?.timeScale(speed.value)};
   let spin; let counter;
+  // Assigned inside the context below; torn down in the outer cleanup because
+  // ctx.revert() reverts GSAP state, not a ResizeObserver subscription.
+  let removeRefreshListener;
 
   const ctx = gsap.context(() => {
     const rotor = root.querySelector(".service-rotor");
     const orbitNodes = gsap.utils.toArray(".service-node", root);
     const nodeCount = orbitNodes.length;
-    const updateLabelPositions = () => {
+    // Per frame, this writes only the outward DIRECTION for each label; the
+    // distance is derived in CSS from that direction and the label's own box
+    // (see `--label-push` in animations.css). Splitting it that way is what
+    // makes the spacing correct at every angle: the ring turns continuously,
+    // so a single flat push distance is either too short where the label's
+    // full width faces the icon (sideways) or far too long where only its
+    // height does (top and bottom) — and the too-long case is what let a
+    // label climb out of the orbit box and collide with the CLICK / TAP hint
+    // sitting above it.
+    const updateLabelDirections = () => {
       const rotation = Number(gsap.getProperty(rotor, "rotation")) || 0;
       orbitNodes.forEach((node) => {
         const index = Number(node.dataset.index);
@@ -22,12 +34,41 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
         const radians = ((base.angle + rotation) * Math.PI) / 180;
         const label = node.querySelector(".service-label");
         if (!label) return;
-        label.style.setProperty("--label-x", `${(Math.cos(radians) * 15).toFixed(2)}cqw`);
-        label.style.setProperty("--label-y", `${(Math.sin(radians) * 15).toFixed(2)}cqw`);
+        const ux = Math.cos(radians);
+        const uy = Math.sin(radians);
+        label.style.setProperty("--ux", ux.toFixed(4));
+        label.style.setProperty("--uy", uy.toFixed(4));
+        label.style.setProperty("--ax", Math.abs(ux).toFixed(4));
+        label.style.setProperty("--ay", Math.abs(uy).toFixed(4));
       });
     };
 
-    updateLabelPositions();
+    // The push needs each label's real rendered height, and a label is one,
+    // two or three lines depending on its text and how wide the container has
+    // made it. That is a layout read, so it must not happen per frame — but it
+    // also must not go stale, because a push computed from a stale height is
+    // exactly a label sitting in the wrong place.
+    //
+    // A ResizeObserver is the right instrument: it fires only when a label's
+    // box actually changes, which is precisely when the number is wrong, and
+    // it does not depend on some other system remembering to refresh. There is
+    // no feedback loop — --label-h feeds --label-push, which feeds `transform`
+    // only, and a transform does not change the observed box.
+    const labelObserver = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const height = entry.target.offsetHeight;
+        if (height) entry.target.style.setProperty("--label-h", `${height}px`);
+      });
+    });
+    orbitNodes.forEach((node) => {
+      const label = node.querySelector(".service-label");
+      if (!label) return;
+      if (label.offsetHeight) label.style.setProperty("--label-h", `${label.offsetHeight}px`);
+      labelObserver.observe(label);
+    });
+
+    updateLabelDirections();
+    removeRefreshListener = () => labelObserver.disconnect();
     // The endless orbit rotation is decorative, and it is the one piece of
     // motion on this page that never stops on its own — the CSS
     // prefers-reduced-motion block can't reach it because it is driven by GSAP.
@@ -36,7 +77,7 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
     // section reads and behaves identically.
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!reducedMotion) {
-      spin = gsap.to(".service-rotor", { rotation: 360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%", onUpdate: updateLabelPositions });
+      spin = gsap.to(".service-rotor", { rotation: 360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%", onUpdate: updateLabelDirections });
       counter = gsap.to(".service-node-content", { rotation: -360, duration: 90, repeat: -1, ease: "none", transformOrigin: "50% 50%" });
     }
 
@@ -238,6 +279,7 @@ export function mountServiceOrbit(root, hintEl, { compact = false } = {}) {
     root.removeEventListener("mouseenter",onEnter);root.removeEventListener("mouseleave",onLeave);
     root.classList.remove("orbit-stable");
     gsap.killTweensOf(speed);
+    removeRefreshListener?.();
     ctx.revert();
   };
 }

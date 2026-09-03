@@ -2,15 +2,18 @@ import { ServiceIcon } from "@/sections/Services/serviceIcons";
 
 export default function ServiceNode({ service, point, onOpen, index, isActive }) {
   // True radial label placement: each label is pushed straight out along its
-  // own node's angle (not just up/down), so it lands in that node's own
-  // empty outward wedge instead of drifting into a neighbouring circle.
-  // Push distance (15cqw) is sized against the label box's own half-width
-  // (max(58px,12.5cqw)/2 = 6.25cqw) plus the node icon's radius (5cqw), so
-  // even a purely horizontal push (the tightest case -- the box's full
-  // width sits perpendicular to the gap) still clears the circle edge by a
-  // few cqw rather than nearly touching it.
-  const labelDx = `${(point.ux * 15).toFixed(2)}cqw`;
-  const labelDy = `${(point.uy * 15).toFixed(2)}cqw`;
+  // own node's angle, so it lands in that node's own empty outward wedge
+  // instead of drifting into a neighbouring circle.
+  //
+  // Only the DIRECTION is set here (and re-set every frame by
+  // mountServiceOrbit as the ring turns). The DISTANCE is computed in CSS
+  // from the label box's own extent along that direction — see
+  // `--label-push` in animations.css. A single flat push distance cannot be
+  // right at every angle: the label is a wide, short rectangle, so the same
+  // number that clears the icon sideways throws the label far too high above
+  // a node at the top of the ring, and the ring rotates continuously, so
+  // every label passes through every angle.
+  const abs = (n) => Math.abs(n).toFixed(4);
 
   return (
     <div className="service-node-slot" style={{ left: `${point.x}%`, top: `${point.y}%` }}>
@@ -27,9 +30,10 @@ export default function ServiceNode({ service, point, onOpen, index, isActive })
           <span
             className="service-label"
             style={{
-              "--label-x": labelDx,
-              "--label-y": labelDy,
-              transform: "translate(-50%, -50%) translate(var(--label-x), var(--label-y))",
+              "--ux": point.ux.toFixed(4),
+              "--uy": point.uy.toFixed(4),
+              "--ax": abs(point.ux),
+              "--ay": abs(point.uy),
             }}
           >
             {service.labelBreak.map((x, i) => (

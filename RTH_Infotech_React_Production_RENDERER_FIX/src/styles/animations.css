@@ -209,19 +209,74 @@
   flex-direction: column;
   align-items: center;
   position: relative;
-  max-width: 980px;
+  /* Room for the orbit AND the label ring that sits outside it. At 980px a
+     near-max orbit plus its side labels was wider than the wrap, and
+     .services-section clips overflow-x — so the outermost service names were
+     being cut off on tall wide screens. */
+  max-width: 1160px;
   margin: 12px auto 0;
   padding-top: 22px;
   isolation: isolate;
   gap: clamp(58px, 7vh, 78px);
 }
 .service-orbit {
+  /* Named so the label-ring reservation below and every responsive override
+     can be expressed against one value instead of restating the formula. */
+  /* 82vw, not 84: the reserve above adds ~11% on top of S, and at 84vw the
+     total footprint was a hair wider than the viewport in the 900-1150px
+     band — where .services-section would clip the outermost names. */
+  --orbit-size: min(82vw, 86vh, 960px);
   container-type: size;
   position: relative;
   z-index: 1;
-  width: min(84vw, 86vh, 960px);
-  height: min(84vw, 86vh, 960px);
-  margin: auto;
+  width: var(--orbit-size);
+  height: var(--orbit-size);
+  /* The service names live OUTSIDE this box — the node ring is at 37% radius
+     and each label is pushed further out still, so the component's real
+     footprint is wider than the circle it is sized by. Nothing in the layout
+     could know that: the flex gap above measured to this edge rather than to
+     the labels, which is what let the CLICK / TAP hint sit on top of whichever
+     name the rotation had brought to the top. Reserving the overhang makes the
+     box describe what is actually drawn.
+
+     The reserve is derived, not guessed. A side label reaches
+        0.37·S (ring) + nodeRadius + labelWidth/2 + gap (push) + labelWidth/2
+     from the centre, against a box half-width of 0.5·S — so it overhangs by
+        nodeRadius + labelWidth + gap - 0.13·S.
+     nodeRadius is bounded above by 0.06·S + 12px across every responsive
+     tier's clamp, which is what lets this be written without restating each
+     of them. Vertically the same reasoning applies with the label's HEIGHT in
+     place of its width — much less room on a desktop, where the height is a
+     small fraction of the width, but NOT negligible on a phone, where both
+     the icon and the label hit their px floors and the whole label ring is a
+     far larger share of the circle. A flat vertical fraction was fine at
+     960px and ~35px short at 320px, which is a label pushed out past the top
+     of the box and back into the hint pill.
+
+     --label-w-token and --label-gap are declared HERE rather than on the
+     label so that this reserve and the push that produces it are computed
+     from the same numbers. When they lived in two places they drifted, and a
+     reserve that disagrees with the push is not a reserve. */
+  --label-w-token: 58px;
+  --label-gap: clamp(7px, calc(var(--orbit-size) * 0.019), 16px);
+  /* A generous stand-in for the tallest rendered label (three lines of
+     max(9px, 1.5cqw)/1.15 plus padding). Using the FULL height rather than
+     half also covers the true maximum, which is reached a little off the
+     vertical axis rather than exactly on it. */
+  --label-h-token: max(38px, calc(var(--orbit-size) * 0.055));
+  --label-reserve-x: max(0px, calc(
+    var(--orbit-size) * 0.06 + 12px
+    + max(var(--label-w-token), var(--orbit-size) * 0.125)
+    + var(--label-gap)
+    - var(--orbit-size) * 0.13
+  ));
+  --label-reserve-y: max(0px, calc(
+    var(--orbit-size) * 0.06 + 12px
+    + var(--label-h-token)
+    + var(--label-gap)
+    - var(--orbit-size) * 0.13
+  ));
+  margin: var(--label-reserve-y) var(--label-reserve-x);
 }
 .connector-layer,
 .service-rotor {
@@ -301,16 +356,57 @@
   border-color: rgba(235, 98, 23, 0.24);
   box-shadow: var(--highlight-top), 0 12px 30px rgba(235, 98, 23, 0.16);
 }
+/* Label placement.
+
+   The ring rotates forever, so every label passes through every angle and the
+   spacing has to be right at all of them. It previously used one flat push of
+   15cqw in whatever direction the node happened to face, which cannot be:
+   the label is a wide, short box, so the distance that clears the icon when
+   the box's full WIDTH faces it (a node at 3 or 9 o'clock) throws the label
+   far too high when only its HEIGHT does (12 or 6 o'clock). Both ends of that
+   were visible defects — labels clipping their own icon at the sides, and at
+   the top climbing right out of the orbit box into the CLICK / TAP hint pill
+   above it.
+
+   So the distance is the box's own extent along the push direction — the
+   support function of a rectangle, |ux|·halfWidth + |uy|·halfHeight — plus
+   the icon's radius and one fixed gap. That gap is then the real, constant
+   distance between the circle and the label at every angle.
+
+   --ux/--uy (direction) and --ax/--ay (their absolute values, since CSS abs()
+   is not dependable yet) are written by ServiceNode.jsx and refreshed each
+   frame by mountServiceOrbit; --label-h is measured once per layout there. */
 .service-label {
+  /* --label-w-token and --label-gap are inherited from .service-orbit, which
+     also sizes its own margin from them (see there). */
+  --label-w: max(var(--label-w-token), 12.5cqw);
+  /* Fallback only — mountServiceOrbit replaces this with the measured height,
+     because a label is one, two or three rendered lines depending on its text
+     and the container width. */
+  --label-h: 2.9em;
+  --ux: 0;
+  --uy: -1;
+  --ax: 0;
+  --ay: 1;
+  --label-push: calc(
+    var(--node-size) / 2
+    + var(--ax) * (var(--label-w) / 2)
+    + var(--ay) * (var(--label-h) / 2)
+    + var(--label-gap)
+  );
+
   position: absolute;
   left: 50%;
   top: 50%;
-  width: max(58px, 12.5cqw);
+  width: var(--label-w);
   padding: 3px 5px;
   font: 700 max(9px, 1.5cqw)/1.15 "Space Grotesk", sans-serif;
   letter-spacing: -0.01em;
   color: var(--text);
   text-align: center;
+  transform:
+    translate(-50%, -50%)
+    translate(calc(var(--ux) * var(--label-push)), calc(var(--uy) * var(--label-push)));
 }
 .service-core {
   position: absolute;
@@ -1128,7 +1224,7 @@
    -------------------------------------------------------------------------- */
 @media (max-width: 900px) {
   .problem-grid { grid-template-columns: repeat(2, 1fr); }
-  .service-orbit { width: min(84vw, 78vh, 760px); height: min(84vw, 78vh, 760px); }
+  .service-orbit { --orbit-size: min(82vw, 78vh, 760px); }
   .service-node { --node-size: clamp(52px, 11.5cqw, 82px); }
   .service-modal-panel { grid-template-columns: 1fr; padding: 32px; }
   .service-visual { min-height: 270px; }
@@ -1146,7 +1242,18 @@
   .problem-chip i { width: 18px; height: 18px; }
   .service-universe-wrap { padding-top: 18px; gap: 44px; }
   /* Keep space for the outward-facing service names, not only the icons. */
-  .service-orbit { width: min(calc(100vw - 92px), 74vh, 420px); height: min(calc(100vw - 92px), 74vh, 420px); }
+  /* Solved rather than tuned. With the reserve above, the component's total
+     width is S + 2·(0.06S + 12 + 52 + 7 - 0.13S) = 0.86·S + 142, and that has
+     to fit the viewport — .services-section clips overflow-x, so anything
+     wider silently loses the outermost service names. Rearranged for S, with
+     8px to spare. A phone is the one place the orbit cannot simply be as big
+     as the screen allows: the icon and the label both have px floors, so the
+     label ring is a far bigger share of the circle here than on a desktop. */
+  .service-orbit {
+    --orbit-size: min(calc((100vw - 150px) / 0.86), 74vh, 420px);
+    /* A 58px floor is a quarter of the orbit on a phone. */
+    --label-w-token: 52px;
+  }
   .service-node { --node-size: clamp(48px, 12cqw, 58px); }
   .service-icon svg { width: 47%; height: 47%; }
   .service-label { padding: 2px 3px; }
@@ -1214,7 +1321,7 @@
 }
 
 @media (max-height: 700px) and (min-width: 601px) {
-  .service-orbit { width: min(82vw, 68vh, 780px); height: min(82vw, 68vh, 780px); }
+  .service-orbit { --orbit-size: min(82vw, 68vh, 780px); }
   .service-node { --node-size: clamp(52px, 11.5cqw, 80px); }
   .service-universe-wrap { padding-top: 14px; gap: 14px; }
 }

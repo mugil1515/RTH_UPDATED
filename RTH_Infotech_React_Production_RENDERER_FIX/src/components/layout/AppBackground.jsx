@@ -32,10 +32,21 @@ const ThreeBackground = lazy(() => import("@/components/effects/ThreeBackground"
 // forms where the input is the whole point, #services is a full-screen DOM
 // orbit that is itself the subject, and #hero should still feel alive.
 //
-// `a` is consistently lower than `b` because headings carry their own
-// contrast — large, heavy, near-black — while a card of 10px mono does not.
-// Over-masking the heading band erases the scene from the open upper half of
-// a section and buys no readability in return (brief §4, §19).
+// WHY `a` IS NOW THE STRONGER OF THE TWO
+// It used to be the weaker one, on the reasoning that a heading carries its own
+// contrast. That reasoning was wrong in one specific way: a heading is bare
+// glyphs on open page with NOTHING behind them, whereas almost every `body`
+// band is a glass card that already resolves to about a tenth of the scene
+// showing through before the scrim contributes anything. So the band that
+// needed the mask least was getting the most of it, and the letters — the one
+// place a stray orbit line or an orange glow actually merges with type — were
+// getting about half of what they needed.
+//
+// The cores below therefore sit near the "directly behind text" target, and the
+// card bands sit lower and let their own glass finish the job. This stays local
+// rather than global because the ellipse is measured from the content box and
+// its gradient reaches zero at 1.25x that box: a strong core washes the words,
+// not the page (brief §5, §6, §7).
 // `edge` / `fx` / `fy` may be overridden per zone. Home's sections share one
 // setting because they share one shape: a centred column over a full-bleed
 // section. A service detail page does not — see the zone below.
@@ -65,21 +76,32 @@ const SAFE_ZONES = [
     root: ".service-detail-page",
     head: ".back-link, .service-detail-grid > div:first-child",
     body: ".detail-sections > section",
-    a: 0.54,
+    // Raised from 0.54 toward the heading target. It stops short of the 0.88
+    // the Home headings get because this box is a whole COLUMN, not a line of
+    // type — the display heading, the lead, the chips and the CTA with the gaps
+    // between them — so the core covers a lot of open page as well as the
+    // words. 0.70 is what protects the copy without whiting out the left half.
+    a: 0.70,
     b: 0.15,
     edge: 1.06,
     fx: 26,
     fy: 26,
   },
-  { id: "hero", head: ".hero-title", body: ".hero-lead, .hero-ctas", a: 0.90, b: 0.78 },
-  { id: "problems", head: ".section-heading", body: ".problem-grid, .problem-transform", a: 0.46, b: 0.50 },
-  { id: "services", head: ".section-heading", body: ".section-inner", a: 0.44, b: 0.40 },
-  { id: "billing", head: ".section-heading", body: ".billing-layout", a: 0.62, b: 0.86 },
-  { id: "agent", head: ".section-heading", body: ".agent-flow, .agent-log", a: 0.62, b: 0.86 },
-  { id: "industries", head: ".section-heading", body: ".industries-layout", a: 0.58, b: 0.88 },
-  { id: "analyzer", head: ".section-heading", body: ".analyzer-box, .analyzer-result, .process-log", a: 0.62, b: 0.92 },
-  { id: "company", head: ".section-heading", body: ".company-description, .company-location, .company-constellation", a: 0.52, b: 0.56 },
-  { id: "contact", head: ".section-heading", body: ".contact-form, .final-brand", a: 0.62, b: 0.90 },
+  { id: "hero", head: ".hero-title", body: ".hero-lead, .hero-ctas", a: 0.90, b: 0.88 },
+  { id: "problems", head: ".section-heading", body: ".problem-grid, .problem-transform", a: 0.88, b: 0.62 },
+  { id: "services", head: ".section-heading", body: ".section-inner", a: 0.84, b: 0.40 },
+  { id: "billing", head: ".section-heading", body: ".billing-layout", a: 0.88, b: 0.76 },
+  // The execution sequence is now staged in this section's open margins rather
+  // than behind its copy, so the mask no longer has to do the whole job alone.
+  // .agent-log is a glass card at 0.88 white over blur(20px) — it already
+  // resolves to about a tenth of the scene showing through, which is the
+  // "directly behind a card" target — so 0.86 on top of it was suppressing the
+  // ring AROUND the card for no readability gained (brief §6, §15).
+  { id: "agent", head: ".section-heading", body: ".agent-flow, .agent-log", a: 0.88, b: 0.72 },
+  { id: "industries", head: ".section-heading", body: ".industries-layout", a: 0.88, b: 0.78 },
+  { id: "analyzer", head: ".section-heading", body: ".analyzer-box, .analyzer-result, .process-log", a: 0.88, b: 0.90 },
+  { id: "company", head: ".section-heading", body: ".company-description, .company-location, .company-constellation", a: 0.86, b: 0.66 },
+  { id: "contact", head: ".section-heading", body: ".contact-form, .final-brand", a: 0.88, b: 0.88 },
 ];
 
 const FOCUS_STATES = [

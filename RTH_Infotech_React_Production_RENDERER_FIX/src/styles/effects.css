@@ -237,10 +237,15 @@ html.bg-quiet .code-streams {
   opacity: 0.66;
 }
 
+/* JSON is the bottom of the hierarchy: below the copy, below the cards, below
+   the 3D story and below its orbit and data paths. At 0.72 over an 0.84 ink it
+   was resolving to roughly 0.6 — brighter than the scene it is supposed to sit
+   behind, which is how an ambient layer ends up competing with body copy.
+   Halved to put it clearly under everything else (brief §5, §7). */
 .code-stream,
 html.bg-quiet .code-stream,
 html.services-depth .code-stream {
-  opacity: 0.72;
+  opacity: 0.34;
   color: rgba(71, 85, 105, 0.84);
   text-shadow: none;
 }
@@ -312,7 +317,7 @@ html.service-detail-route .code-stream.s4 {
      on specificity. */
   .code-stream,
   html.bg-quiet .code-stream,
-  html.services-depth .code-stream { opacity: 0.5; }
+  html.services-depth .code-stream { opacity: 0.26; }
   .code-stream.s2 { display: none; }
   .code-stream.s1 { left: 5%; top: 19%; }
   html.service-detail-route .code-stream { opacity: 0.11 !important; }

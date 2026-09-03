@@ -1,22 +1,39 @@
 // "Don't just answer. Act." — execution, shown as cause and effect.
 //
-// The old version had a robotic hand drift in from the right, hover near a
-// glowing cylinder and wiggle its fingers forever. Nothing it did changed
-// anything, so it read as an ornament with a hand shape.
+// SCROLL DRIVES THIS, NOT A CLOCK.
+// The sequence used to run on its own 16-second timer (`clockT += delta`),
+// which meant the visitor arrived at whatever phase the timer happened to be
+// in and the story ran on regardless of them. The phase is now the #agent
+// section's own scroll progress, so the visitor advances the automation by
+// reading the section — and scrolling back runs it backwards, cleanly,
+// because every value below is a pure function of that one number.
 //
-// Here the hand has exactly one job, and the whole section is one causal
-// chain that repeats slowly enough to follow:
+// THE CLICK STARTS THE PROCESS.
+// The old order was trigger -> analyze -> decide -> PRESS -> send, so the hand
+// pressed the button after the machine had already decided what to do. The
+// press was an illustration of a decision that had happened without it. Now
+// the press is at the front, where a trigger belongs, and everything after it
+// is its consequence:
 //
-//   TRIGGER   overdue invoices surface, amber
-//   DECISION  the engine reads them and works along the candidate routes to
-//             each customer, lighting them one at a time
-//   ACTION    the hand presses EXECUTE — reminders leave along those routes
-//   RESULT    customers receive them, the CRM updates, a follow-up is scheduled
+//   0.00-0.15  IDLE       control lit and waiting, work queued but inert
+//   0.15-0.30  APPROACH   the hand travels to the control
+//   0.30-0.36  PRESS      the button goes down; the core comes up
+//   0.36-0.50  PROCESS    work enters the machine, the chamber runs
+//   0.50-0.65  DECIDE     one route is chosen; the others stay dark
+//   0.65-0.80  ACT        the messages leave along the chosen route
+//   0.80-0.92  UPDATE     the CRM, the ledger and the follow-up land
+//   0.92-1.00  COMPLETE   orange settles to green and holds
 //
-// Nothing in here moves before its cause has happened. The hand does not
-// approach until the decision is made, the messages do not leave until the
-// button is down, and the customer records do not light until a message has
-// physically reached them.
+// NOTHING ELSE MOVED.
+// Every object is in the position it has always been in — the console, its
+// button, the hand's approach anchor, the routes, the customer records and the
+// three systems. Only WHEN each of them acts changed.
+//
+// ONE ACT AT A TIME.
+// Everything used to be on screen from the first frame, which read as a
+// diagram rather than a process. Each group now carries a `focus` weight, and
+// what is not the current subject is scaled down and pushed back rather than
+// hidden — the whole chain stays legible, but only one link is ever loud.
 
 import * as THREE from "three";
 
@@ -36,15 +53,24 @@ const window01 = (x, a, b) => {
 /** Gate: 0 before a, ramps to 1 by b, stays 1. */
 const gate = (x, a, b) => smoothstep((x - a) / (b - a || 1));
 
-// Phase boundaries of one execution cycle, in 0..1 of the cycle.
-const T_TRIGGER = 0.10;
-const T_ANALYZE = 0.24;
-const T_DECIDE = 0.38;
-const T_PRESS = 0.50;
-const T_SEND = 0.74;
-const T_CONFIRM = 0.90;
+/** Plateau: ramps up across [a,b], holds at 1, ramps back down across [c,d].
+ *  The hold is what gives each stage a moment to be understood before the
+ *  next one takes over, instead of every act cross-fading continuously. */
+const act = (x, a, b, c, d) => smoothstep((x - a) / (b - a || 1))
+  * (1 - smoothstep((x - c) / (d - c || 1)));
 
-const CYCLE = 16;
+// Phase boundaries, in 0..1 of the section's scroll.
+const T_APPROACH = 0.15; // hand starts moving toward the control
+const T_ALIGN = 0.30;    // fingertip is on the button
+const T_CLICK = 0.36;    // button bottoms out — the process starts HERE
+const T_PROCESS = 0.50;  // work has entered the machine
+const T_DECIDE = 0.65;   // a route has been chosen
+const T_ACT = 0.80;      // the messages have arrived
+const T_UPDATE = 0.92;   // the connected systems have updated
+
+// Where the sequence parks when there is no scroll progress to read (a route
+// with no #agent section). Late enough to read as a finished, working system.
+const RESTING_PHASE = 0.94;
 
 export function createActionSequence(objects, mat, geo, { seg = 24, customers = 3 } = {}) {
   const root = new THREE.Group();
@@ -86,6 +112,7 @@ export function createActionSequence(objects, mat, geo, { seg = 24, customers = 
    * can plausibly reach it.
    */
   const console_ = new THREE.Group();
+
   console_.position.set(0.2, -1.35, 3.2);
   root.add(console_);
 
@@ -167,36 +194,37 @@ export function createActionSequence(objects, mat, geo, { seg = 24, customers = 
     item.group.visible = false;
     item.setState("active", 1);
     root.add(item.group);
-    return { item, curve: routes[i].curve, offset: i * 0.16 };
+    return { item, curve: routes[i].curve, offset: i * 0.13 };
   });
 
   /* ---- RESULT: the systems that get updated ------------------------------
    * These are the payoff. They are always on screen and always inert until a
    * message has actually landed, so their colour change is earned.
    */
-  const crm = objects.build("crm");
-  crm.group.position.set(3.6, 2.5, 0.4);
-  crm.group.scale.setScalar(1.15);
-  root.add(crm.group);
-
-  const ledger = objects.build("database");
-  ledger.group.position.set(1.6, 2.6, 0.0);
-  ledger.group.scale.setScalar(1.15);
-  root.add(ledger.group);
-
-  const schedule = objects.build("calendar");
-  schedule.group.position.set(5.6, 2.4, 1.0);
-  schedule.group.scale.setScalar(1.15);
-  root.add(schedule.group);
-
+  // The CRM, the ledger and the follow-up, in their original places. Held as a
+  // list only so the confirmation below can stagger them in order; the objects
+  // and positions are exactly what they were.
+  const SYSTEM_AT = [
+    ["crm", new THREE.Vector3(3.6, 2.5, 0.4)],
+    ["database", new THREE.Vector3(1.6, 2.6, 0.0)],
+    ["calendar", new THREE.Vector3(5.6, 2.4, 1.0)],
+  ];
+  const systems = SYSTEM_AT.map(([kind, at]) => {
+    const item = objects.build(kind);
+    item.group.position.copy(at);
+    item.group.scale.setScalar(1.15);
+    root.add(item.group);
+    return { item, at };
+  });
   // Links from the chosen route up to the systems it updates, so "the CRM
   // updated" has a visible reason rather than just happening nearby.
   const linkMat = emissive(ORANGE, 0.12);
   const linkGeo = geo.track(new THREE.CylinderGeometry(0.016, 0.016, 1, 6));
   const _a = new THREE.Vector3();
   const _b = new THREE.Vector3();
-  const links = [crm, ledger, schedule].map((target) => {
+  const links = systems.map(({ item: target }) => {
     const link = new THREE.Mesh(linkGeo, linkMat);
+
     _a.set(1.4, 0.2, 2.4);
     _b.copy(target.group.position);
     const dir = _b.clone().sub(_a);
@@ -210,92 +238,145 @@ export function createActionSequence(objects, mat, geo, { seg = 24, customers = 
   /* ---- exported anchors, for the robotic hand --------------------------- */
   const anchors = {
     button: new THREE.Vector3(0.2, -1.05, 3.2),
+
     approach: new THREE.Vector3(4.4, 1.2, 4.4),
   };
 
   const _travel = new THREE.Vector3();
-  let clockT = 0;
-  const state = { pressed: 0, reach: 0, phase: 0 };
+  const state = { pressed: 0, reach: 0, phase: 0, core: 0 };
 
   /**
    * @param weight 0..1 — how present this sequence is (its section's weight)
-   * @param hold   when set, the cycle parks at this phase instead of running
-   *               (prefers-reduced-motion). Parked after the send, so the
-   *               reminders have gone out and the systems read as updated
-   *               rather than the chain sitting frozen before it starts.
-   * @returns state { phase, reach, pressed } so the scene can drive the hand
+   * @param phase  0..1 — the #agent section's own scroll progress. This is the
+   *               only thing that advances the story; there is no internal
+   *               clock. Pass null on a route that has no #agent section and
+   *               the chain parks at RESTING_PHASE.
+   * @returns state { phase, reach, pressed, core } so the scene can drive the
+   *          hand and light the hub in step with the press.
    */
-  function update(elapsed, delta, weight, hold = null) {
+  function update(elapsed, delta, weight, phase = null) {
     root.visible = weight > 0.02;
     if (!root.visible) {
       state.reach = 0;
       state.pressed = 0;
+      state.core = 0;
       return state;
     }
 
-    if (hold === null) clockT = (clockT + delta * weight) % CYCLE;
-    else clockT = hold * CYCLE;
-    const p = clockT / CYCLE;
+    const p = clamp01(typeof phase === "number" ? phase : RESTING_PHASE);
     state.phase = p;
-    const mix = Math.min(1, delta * 3);
+    // Reversing scroll must converge as cleanly as advancing it, so the colour
+    // blend cannot be allowed to stall: delta is 0 under reduced motion, and a
+    // mix of 0 would freeze every object on whatever state it last held.
+    const mix = Math.min(1, Math.max(delta, 1 / 60) * 6);
+    // Idle motion only — never story. Zero under reduced motion.
+    const bob = delta > 0 ? 1 : 0;
 
-    /* -- TRIGGER -------------------------------------------------------- */
-    const triggered = gate(p, 0, T_TRIGGER);
-    const cleared = gate(p, T_SEND, T_CONFIRM);
-    overdue.forEach((o) => {
-      o.item.group.visible = triggered > 0.02;
-      o.item.group.position.set(
-        o.at.x,
-        o.at.y + (1 - triggered) * -0.8 + Math.sin(elapsed * 0.5 + o.phase) * 0.07,
-        o.at.z,
-      );
-      o.item.group.scale.setScalar(1.1 * triggered * (1 - cleared * 0.55));
-      o.item.group.rotation.y = -0.35 + Math.sin(elapsed * 0.3 + o.phase) * 0.12;
-      // amber while overdue, green once the reminders have gone out
-      o.item.setState(cleared > 0.6 ? "success" : triggered > 0.5 ? "alert" : "neutral", mix);
-    });
-
-    /* -- ANALYZE: the read sweep ---------------------------------------- */
-    const analyzing = window01(p, T_TRIGGER, T_ANALYZE);
-    sweepMat.opacity = analyzing * 0.7;
-    sweep.position.x = -5.6 + ((p - T_TRIGGER) / (T_ANALYZE - T_TRIGGER || 1)) * 2.6;
-
-    /* -- DECIDE: the engine works through the candidate routes ------------
-     * They light one at a time, in order, while the decision is being made —
-     * that sequence is what reads as "choosing" rather than "switching on".
-     * Once the button is pressed they all carry traffic.
+    /* -- who is the subject right now -----------------------------------
+     * Not visibility: everything in the chain stays on screen so the whole
+     * workflow can be read at once (brief §3). This is emphasis — whatever is
+     * not the current act is scaled down and pushed back (brief §4).
      */
-    const deciding = gate(p, T_ANALYZE, T_DECIDE);
-    const sending = gate(p, T_PRESS, T_SEND);
-    const scanning = deciding * (1 - sending);
-    const cursor = ((p - T_ANALYZE) / (T_DECIDE - T_ANALYZE || 1)) * routeMats.length;
-    routeMats.forEach((rm, i) => {
-      const considered = scanning * Math.max(0, 1 - Math.abs(cursor - i - 0.5) * 1.6);
-      const target = 0.09 + considered * 0.55 + sending * 0.5;
-      rm.opacity += (target - rm.opacity) * Math.min(1, delta * 4);
+    // The waiting work is the subject from the first frame — it is the reason
+    // the button gets pressed — and only recedes once the decision is made.
+    const fTrigger = 1 - gate(p, T_DECIDE, T_ACT);
+    const fProcess = act(p, T_ALIGN, T_CLICK, T_DECIDE, T_ACT);
+    const fAction = act(p, T_PROCESS, T_DECIDE, T_UPDATE, 1.02);
+    const fResult = gate(p, T_ACT, T_UPDATE);
+    // How far a de-emphasised group recedes. One helper, so every group
+    // recedes by the same amount and the depth ordering stays readable.
+    const recede = (group, base, at, focus) => {
+      group.scale.setScalar(base * (0.58 + 0.42 * focus));
+      group.position.z = at.z - (1 - focus) * 1.5;
+    };
+
+    /* -- IDLE / TRIGGER: the work that is waiting ------------------------
+     * Present from the start, because it is the reason the button gets
+     * pressed — but inert and small until the press sends it in.
+     */
+    const intake = gate(p, T_CLICK, T_PROCESS);
+    const cleared = gate(p, T_ACT, T_UPDATE);
+    overdue.forEach((o, i) => {
+      o.item.group.visible = true;
+      // Once the process starts they are drawn in toward the machine. This is
+      // the "input data entering system" beat, and it is caused by the click.
+      const drawn = smoothstep(intake) * (1 - cleared * 0.25);
+      o.item.group.position.set(
+        o.at.x + drawn * (2.1 + i * 0.3),
+        o.at.y - drawn * (0.9 + i * 0.2) + Math.sin(elapsed * 0.5 + o.phase) * 0.07 * bob,
+        o.at.z + drawn * 0.4,
+      );
+      recede(o.item.group, 1.1 * (1 - cleared * 0.45), o.at, Math.max(fTrigger, fProcess));
+      o.item.group.position.z += drawn * 0.4;
+      o.item.group.rotation.y = -0.35 + Math.sin(elapsed * 0.3 + o.phase) * 0.12 * bob;
+      // amber while overdue, orange while being worked, green once cleared
+      o.item.setState(cleared > 0.6 ? "success" : intake > 0.35 ? "process" : "alert", mix);
     });
 
-    /* -- ACT: the hand arrives, presses, and the send begins ------------- */
-    // The hand only starts reaching once the decision exists to be executed.
-    const reach = gate(p, T_DECIDE - 0.08, T_PRESS - 0.04);
-    // A single sharp press, then release — not a continuous bobbing.
-    const press = window01(p, T_PRESS - 0.06, T_PRESS + 0.08);
-    state.reach = reach;
-    state.pressed = press;
+    /* -- PROCESS: the read sweep passes over the intake ------------------ */
+    const processing = act(p, T_CLICK, T_CLICK + 0.06, T_PROCESS, T_DECIDE);
+    sweepMat.opacity = processing * 0.7;
+    sweep.position.x = -5.6 + gate(p, T_CLICK, T_PROCESS) * 2.6;
 
-    buttonMat.emissiveIntensity = 0.3 + deciding * 1.1 + press * 1.4;
-    button.position.y = 0.26 - press * 0.075;
-    armMat.opacity = deciding * 0.35 + press * 0.4;
+    /* -- THE PRESS, and everything it starts -----------------------------
+     * `reach` is the approach, `press` is the stroke itself. Both are pure
+     * functions of scroll, so scrubbing backwards lifts the finger and walks
+     * the hand back out exactly the way it came in (brief §14).
+     */
+    const reachIn = gate(p, T_APPROACH, T_ALIGN);
+    const pressIn = gate(p, T_ALIGN, T_CLICK);
+    // The button comes back up right after the click, and the hand leaves once
+    // the process it started is running on its own. Without this the hand sat
+    // on the control for the remaining two thirds of the section, competing
+    // for attention with the very thing it had just set going (brief §4).
+    const release = gate(p, T_CLICK, T_PROCESS);
+    const withdraw = gate(p, T_PROCESS - 0.04, T_DECIDE);
+    state.reach = reachIn * (1 - withdraw);
+    state.pressed = pressIn * (1 - release);
+    // The control stays lit while the run it launched is in progress — a
+    // latched switch, not a doorbell.
+    const latched = pressIn * (1 - gate(p, T_UPDATE, 1) * 0.55);
 
-    /* -- messages leave, travel, and arrive ------------------------------ */
+    // The core comes up the instant the button bottoms out. This is the single
+    // most important cause-and-effect link in the section (brief §9), so the
+    // ramp is deliberately short and lands exactly on T_CLICK.
+    const live = gate(p, T_CLICK - 0.03, T_CLICK + 0.02);
+    state.core = live * (1 - gate(p, T_UPDATE, 1) * 0.45);
+
+    buttonMat.emissiveIntensity = 0.34 + reachIn * 0.5 + latched * 1.7;
+    button.position.y = 0.26 - state.pressed * 0.085;
+    // The ring that leaves the button at the moment of contact.
+    const pulse = window01(p, T_ALIGN, T_PROCESS);
+    armMat.opacity = reachIn * 0.18 + pulse * 0.55;
+    armRing.scale.setScalar(1 + pulse * 1.9);
+
+    /* -- DECIDE: one route is chosen, the others stay dark ---------------
+     * The cursor walks the candidates during DECIDE and then settles, so the
+     * chosen route is the one still lit when the sending starts.
+     */
+    const deciding = act(p, T_PROCESS, T_PROCESS + 0.05, T_DECIDE, T_DECIDE + 0.04);
+    const sending = gate(p, T_DECIDE, T_ACT);
+    const cursor = ((p - T_PROCESS) / (T_DECIDE - T_PROCESS || 1)) * routeMats.length;
+    routeMats.forEach((rm, i) => {
+      const considered = deciding * Math.max(0, 1 - Math.abs(cursor - i - 0.5) * 1.6);
+      // Assigned, not damped toward a target: a damped value carries history,
+      // and history is exactly what makes a scrubbed timeline look different
+      // going up than it did coming down.
+      rm.opacity = 0.06 + considered * 0.6 + sending * 0.46;
+    });
+
+    /* -- ACT: the messages travel the route they were assigned ----------- */
+    const span = T_ACT - T_DECIDE;
     messages.forEach((m, i) => {
-      const raw = (p - T_PRESS) / (T_SEND - T_PRESS || 1) - m.offset;
-      const travel = raw / (1 - m.offset || 1);
+      // Staggered start AND finish. Normalising every message to end at T_ACT
+      // made all three land on the same frame, which reads as one event rather
+      // than as three deliveries — and left the customers all turning green
+      // together with nothing having visibly reached them.
+      const start = T_DECIDE + span * m.offset;
+      const travel = (p - start) / (span * 0.7 || 1);
       const flying = travel > 0 && travel < 1;
       m.item.group.visible = flying;
       if (flying) {
-        // Rides the route it was assigned, so the reminder is visibly the
-        // thing the chosen path was for.
         const e = smoothstep(travel);
         m.curve.getPointAt(clamp01(e), _travel);
         m.item.group.position.copy(_travel);
@@ -303,25 +384,41 @@ export function createActionSequence(objects, mat, geo, { seg = 24, customers = 
         m.item.group.scale.setScalar(1.15 * (0.4 + e * 0.6));
       }
       // the customer lights only once its own message has landed
-      const landed = travel >= 0.92 ? 1 : 0;
-      receivers[i].setState(landed || p > T_SEND ? "success" : "neutral", mix);
+      const landed = travel >= 0.96;
+      receivers[i].setState(
+        landed || p > T_ACT ? "success" : sending > 0.2 ? "process" : "neutral",
+        mix,
+      );
+      recede(receivers[i].group, 1.05, CUSTOMER_AT[i], Math.max(fAction, fResult));
       receivers[i].group.position.y = CUSTOMER_AT[i].y
-        + Math.sin(elapsed * 0.45 + i) * 0.06 + (landed ? 0.08 : 0);
+        + Math.sin(elapsed * 0.45 + i) * 0.06 * bob + (landed ? 0.08 : 0);
     });
 
-    /* -- CONFIRM: the connected systems update --------------------------- */
-    const confirmed = gate(p, T_SEND, T_CONFIRM);
-    const scheduled = gate(p, T_CONFIRM, 1);
-    linkMat.opacity = 0.1 + confirmed * 0.5;
-    crm.setState(confirmed > 0.5 ? "success" : sending > 0.4 ? "process" : "neutral", mix);
-    ledger.setState(confirmed > 0.6 ? "success" : sending > 0.5 ? "process" : "neutral", mix);
-    schedule.setState(scheduled > 0.4 ? "success" : confirmed > 0.8 ? "process" : "neutral", mix);
-    [crm, ledger, schedule].forEach((sys, i) => {
-      const lift = i === 2 ? scheduled : confirmed;
-      sys.group.scale.setScalar(1.15 * (1 + lift * 0.1));
-      sys.group.rotation.y = Math.sin(elapsed * 0.25 + i) * 0.18;
+    /* -- UPDATE: the connected systems land, one after another -----------
+     * Staggered across the update window so four checkmarks appear in order
+     * rather than together — the difference between "the systems updated" and
+     * "four things lit up".
+     */
+    const settled = gate(p, T_UPDATE, 0.99);
+    const working = gate(p, T_DECIDE, T_ACT);
+    // Everything orange settles once the run is complete — the finished state
+    // is a system at rest, not one still visibly working (brief §2).
+    linkMat.opacity = (0.06 + sending * 0.22 + gate(p, T_ACT, T_UPDATE) * 0.34)
+      * (1 - settled * 0.5);
+    routeMats.forEach((rm) => { rm.opacity *= 1 - settled * 0.6; });
+    systems.forEach(({ item, at }, i) => {
+      const slot = T_ACT + (T_UPDATE - T_ACT) * (i / systems.length);
+      const done = gate(p, slot, slot + 0.07);
+      item.setState(done > 0.5 ? "success" : working > 0.35 ? "process" : "neutral", mix);
+      recede(item.group, 1.15 * (1 + done * 0.1), at, fResult);
+      item.group.rotation.y = Math.sin(elapsed * 0.25 + i) * 0.18 * bob;
     });
-    links.forEach((link, i) => { link.visible = confirmed > 0.05 || i < 2; });
+    links.forEach((link, i) => {
+      link.visible = working > 0.04 || i < 2;
+    });
+
+    /* -- COMPLETE: the orange settles and the system holds ---------------- */
+    buttonMat.emissiveIntensity *= 1 - settled * 0.3;
 
     return state;
   }

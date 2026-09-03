@@ -293,6 +293,12 @@ export default function ThreeBackground({ routePath = "" }) {
     let pointerX = 0;
     let pointerY = 0;
     let pageProgress = 0;
+    // Raw scroll progress through #agent, and the damped value the scene
+    // actually reads. Damping it here rather than in the trigger keeps the
+    // phase smooth under Lenis' own easing without letting it overshoot — a
+    // phase that overshoots would press the button twice.
+    let agentTarget = 0;
+    let agentPhase = 0;
     let serviceTransition = 0;
     let billingMode = false;
     let billingProgress = 0;
@@ -398,6 +404,36 @@ export default function ThreeBackground({ routePath = "" }) {
           onEnterBack: () => setServiceTransition(1),
           onLeave: () => {},
           onLeaveBack: () => setServiceTransition(0),
+        }));
+      }
+
+      // The execution sequence is scroll-driven end to end (brief §2): this
+      // trigger is the ONLY thing that advances it, so the hand approaches,
+      // presses and withdraws at the reader's pace and runs backwards when
+      // they scroll back up. `scrub` is deliberately paired with the damping
+      // in the render loop rather than an easing here — the value has to stay
+      // continuous, because it is a phase, not a tween target.
+      //
+      // start/end MUST match the SECTION_MOODS trigger above ("top 62%"),
+      // which is the thing that ramps `sections.agent` — and therefore this
+      // group's whole presence (`weight` in action.update, gating
+      // root.visible) — up to 1. They used to be two different windows
+      // ("top 82%"/"bottom 28%" here vs "top 62%" there): this trigger's
+      // click-phase started advancing before the section's own visibility
+      // weight had caught up, so by the time the group actually became
+      // visible, the phase had already silently walked past the click and
+      // into DECIDE/ACT — the process read as hiding the instant it
+      // appeared. One scroll window for both fixes it at the source.
+      const agentSection = document.querySelector("#agent");
+      if (agentSection) {
+        routeTriggers.push(ScrollTrigger.create({
+          trigger: agentSection,
+          start: "top 62%",
+          end: "bottom 38%",
+          scrub: true,
+          onUpdate: (self) => { agentTarget = self.progress; },
+          onLeaveBack: () => { agentTarget = 0; },
+          onLeave: () => { agentTarget = 1; },
         }));
       }
 
@@ -531,11 +567,15 @@ export default function ThreeBackground({ routePath = "" }) {
       camera.position.copy(currentPosition);
       camera.lookAt(currentLook);
 
+      // Critically damped toward the scroll value, never past it.
+      agentPhase += (agentTarget - agentPhase) * (1 - Math.exp(-9 * rawDelta));
+
       automation.update(
         pageProgress, elapsed, delta, mood,
         liveBeats,
         liveSections,
         industry,
+        serviceMode ? null : agentPhase,
       );
 
       // Where the scene sits relative to the copy, per route.

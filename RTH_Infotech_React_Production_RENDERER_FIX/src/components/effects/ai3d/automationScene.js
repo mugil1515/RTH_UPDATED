@@ -662,8 +662,14 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
   // element and drops only supporting detail, per brief §23.
   const tier = mobile
     ? {
+      // `hand: false` used to drop the robotic hand on phones entirely — but
+      // the hand IS the trigger, and without it the execution section has a
+      // button that presses itself. Decorative geometry can go on a small
+      // screen; the storytelling objects cannot (brief §11, §12). It is built
+      // at half the segment count instead, which is where its cost actually
+      // lives.
       services: 4, orbits: 1, particles: 10, seg: 24, tubular: 40,
-      hand: false, intake: 3, manual: 3, queue: 3, outputs: 3,
+      hand: true, intake: 3, manual: 3, queue: 3, outputs: 3,
       billing: 5, pipeline: 5, customers: 2, labels: false, industry: 4,
     }
     : tablet
@@ -997,7 +1003,10 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
   let industryShown = INDUSTRY_ORDER[0];
   let industryTarget = INDUSTRY_ORDER[0];
 
-  function update(progress, elapsed, delta, mood = DEFAULT_MOOD, beats = null, sections = null, industry = null) {
+  function update(
+    progress, elapsed, delta, mood = DEFAULT_MOOD, beats = null, sections = null,
+    industry = null, agentPhase = null,
+  ) {
     const p = clamp01(progress);
     const energy = mood.energy ?? 1;
     const spread = mood.spread ?? 1;
@@ -1189,42 +1198,60 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
       hubCore.rotation.y += dm * 0.5;
       hubGlass.rotation.y -= dm * 0.12;
       hubCap.position.y = 0.75 + Math.sin(elapsed * 0.6) * 0.04;
-      mat.coreHalo.opacity = 0.12 + 0.09 * (0.4 + streamOn * 0.6) + Math.sin(elapsed * 1.1) * 0.025;
+      // coreHalo is set below, once the press has been evaluated.
 
-      // Under reduced motion the caller sends delta 0, which would park both
-      // sequences at phase 0 — an empty billing line and an execution chain
-      // that never starts. Holding them late instead keeps the meaning
-      // readable as a still frame, which is the whole point of the section.
+      // Under reduced motion the caller sends delta 0, which would park the
+      // billing line at phase 0 — an empty conveyor. Holding it late instead
+      // keeps the meaning readable as a still frame.
       billing.update(elapsed, delta, billingW, still ? 0.93 : null);
-      const act = action.update(elapsed, delta, agent, still ? 0.82 : null);
+      // The execution chain is driven entirely by the section's scroll
+      // position now — no internal clock — so there is nothing to "hold" for
+      // reduced motion: scrolling is user-driven, which is exactly the kind of
+      // movement the preference allows.
+      const act = action.update(elapsed, delta, agent, agentPhase);
 
-      /* -- robotic hand: approach the control, press it, withdraw ------
-       * Its position is derived from the action sequence's own phase, so the
-       * press is the cause of the send rather than something happening
-       * alongside it.
+      /* -- robotic hand: approach the control, press it, hold ----------
+       * Driven by the same scroll phase as everything else, so the press is
+       * the cause of what follows rather than something happening alongside
+       * it — and scrolling back lifts the finger and walks the hand out the
+       * way it came in (brief §8, §14).
        */
       if (hand) {
-        const reach = act.reach * agent;
-        hand.root.visible = reach > 0.02;
+        // Visible for the whole approach AND the press, not just while
+        // travelling: the hand disappearing at the moment of contact was the
+        // one frame the section most needed it (brief §3).
+        const present = Math.max(act.reach, act.pressed) * agent;
+        hand.root.visible = present > 0.02;
         if (hand.root.visible) {
-          const ease = smoothstep(reach);
-          // Where the FINGERTIP should be: parked above the control while
-          // approaching, on it at the moment of the press.
+          const ease = smoothstep(act.reach);
+          // Where the FINGERTIP should be: off frame, then on the button.
           tmp.copy(action.anchors.approach).lerp(action.anchors.button, ease);
-          tmp.y += (1 - ease) * 0.9 + 0.16 - act.pressed * 0.16
+          // Clears the button on the way in, then travels the last few
+          // millimetres down as the press completes — this vertical drop is
+          // what actually reads as a click (brief §8).
+          tmp.y += (1 - ease) * 0.9 + 0.16 - act.pressed * 0.19
             + Math.sin(elapsed * 0.7) * 0.03 * (1 - ease);
-          // Place the root so the tip lands exactly there.
           hand.root.position.copy(tmp).sub(hand.tipOffset);
           hand.hand.rotation.z = -0.16 + Math.sin(elapsed * 0.5) * 0.03 * (1 - ease);
-          hand.hand.rotation.x = -0.62 - act.pressed * 0.09;
+          hand.hand.rotation.x = -0.62 - act.pressed * 0.12;
           // the index finger straightens into the press; the others hold
           hand.fingers.forEach((f, fi) => {
             const idle = Math.sin(elapsed * 0.9 + f.userData.phase) * f.userData.amp * (1 - ease);
-            f.rotation.x = f.userData.rest + idle - (fi === 0 ? act.pressed * 0.12 : 0);
+            f.rotation.x = f.userData.rest + idle - (fi === 0 ? act.pressed * 0.16 : 0);
           });
           hand.palmNode.material.opacity = 0.4 + act.pressed * 0.55;
         }
       }
+
+      /* -- the core answers the press ---------------------------------
+       * act.core steps up the instant the button bottoms out, so the hub is
+       * visibly the thing the click switched on rather than something that
+       * was already running (brief §9).
+       */
+      const core = act.core * agent;
+      hubCore.scale.setScalar(0.82 + core * 0.3 + Math.sin(elapsed * 1.5) * 0.02 * core);
+      mat.coreHalo.opacity = 0.12 + 0.09 * (0.4 + streamOn * 0.6)
+        + core * 0.16 + Math.sin(elapsed * 1.1) * 0.025;
     }
 
     /* =================================================================
