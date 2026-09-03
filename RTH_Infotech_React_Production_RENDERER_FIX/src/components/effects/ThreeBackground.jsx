@@ -299,6 +299,26 @@ export default function ThreeBackground({ routePath = "" }) {
     // phase that overshoots would press the button twice.
     let agentTarget = 0;
     let agentPhase = 0;
+    // Whether the visitor is currently inside #agent's own trigger — set the
+    // instant its boundary is crossed, by that SAME trigger, below. Nothing
+    // else may gate the process group's presence.
+    //
+    // Presence used to come from `sections.agent`, a value shared across every
+    // section for hub "mood" blending: it is driven by onEnter/onEnterBack
+    // callbacks on a DIFFERENT array of triggers, tweened over a fixed 0.9s
+    // with `overwrite: true` (killing and restarting on every boundary
+    // crossing, anywhere on the page). Cross that boundary again — a small
+    // up/down wobble right at the edge, or scroll past it, reverse, and
+    // return — before the previous 0.9s tween finished, and it gets killed
+    // mid-flight and restarted from wherever it was, which is what let the
+    // process settle at a value below the 0.02 visibility floor and just
+    // stay there: nothing was un-reversible, the tween was simply racing
+    // itself. `agentActive` removes that race for the process specifically —
+    // it is a plain boolean, flipped immediately by the one trigger that also
+    // owns agentPhase, so "is it in view" and "what phase is it at" can never
+    // disagree.
+    let agentActive = false;
+    let agentPresence = 0;
     let serviceTransition = 0;
     let billingMode = false;
     let billingProgress = 0;
@@ -432,8 +452,10 @@ export default function ThreeBackground({ routePath = "" }) {
           end: "bottom 38%",
           scrub: true,
           onUpdate: (self) => { agentTarget = self.progress; },
-          onLeaveBack: () => { agentTarget = 0; },
-          onLeave: () => { agentTarget = 1; },
+          onEnter: () => { agentActive = true; },
+          onEnterBack: () => { agentActive = true; },
+          onLeaveBack: () => { agentTarget = 0; agentActive = false; },
+          onLeave: () => { agentTarget = 1; agentActive = false; },
         }));
       }
 
@@ -569,6 +591,13 @@ export default function ThreeBackground({ routePath = "" }) {
 
       // Critically damped toward the scroll value, never past it.
       agentPhase += (agentTarget - agentPhase) * (1 - Math.exp(-9 * rawDelta));
+      // Same damping as the phase above, applied to the plain boolean so the
+      // process doesn't pop at full strength the instant the boundary is
+      // crossed. This is an eased approach toward a target re-evaluated every
+      // frame from live state (agentActive) — not a tween that can be killed
+      // mid-flight and left short — so it always converges to the correct
+      // value regardless of how the visitor got there.
+      agentPresence += ((agentActive ? 1 : 0) - agentPresence) * (1 - Math.exp(-9 * rawDelta));
 
       automation.update(
         pageProgress, elapsed, delta, mood,
@@ -576,6 +605,7 @@ export default function ThreeBackground({ routePath = "" }) {
         liveSections,
         industry,
         serviceMode ? null : agentPhase,
+        serviceMode ? 0 : agentPresence,
       );
 
       // Where the scene sits relative to the copy, per route.

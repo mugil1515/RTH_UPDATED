@@ -1005,7 +1005,7 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
 
   function update(
     progress, elapsed, delta, mood = DEFAULT_MOOD, beats = null, sections = null,
-    industry = null, agentPhase = null,
+    industry = null, agentPhase = null, agentPresence = 0,
   ) {
     const p = clamp01(progress);
     const energy = mood.energy ?? 1;
@@ -1034,7 +1034,14 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
     const problems = w.problems ?? 0;
     const services = w.services ?? 0;
     const billingW = w.billing ?? 0;
-    const agent = w.agent ?? 0;
+    // Floored by agentPresence rather than replaced by it: the cross-faded
+    // mood weight keeps doing its existing job (hub "energy" blending as the
+    // visitor approaches/leaves), and agentPresence — driven directly, with
+    // no tween to race, by #agent's own trigger boundary — simply guarantees
+    // this can never read as less than "fully present" while the visitor is
+    // actually inside the section. See ThreeBackground.jsx for why that floor
+    // is what makes reverse scroll deterministic.
+    const agent = Math.max(w.agent ?? 0, agentPresence);
     const industriesW = w.industries ?? 0;
     const analyzer = w.analyzer ?? 0;
     const company = w.company ?? 0;
