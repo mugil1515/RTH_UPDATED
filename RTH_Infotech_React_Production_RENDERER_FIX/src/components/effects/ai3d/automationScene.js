@@ -417,24 +417,67 @@ function buildParticles(geo, count, curves, spreadY) {
 
 /* ---------------------------------------------------------------------------
  * robotic hand — white ceramic shell, titanium joints, orange inner light.
- * Each finger is its own group so it can actually flex. Unchanged in build
- * from the original; what changed is that it now has somewhere to go and
- * something to do when it gets there.
+ *
+ * This is the object the whole execution section turns on: it is the only
+ * thing in the scene that acts rather than reacts, and it is on screen at the
+ * largest scale of anything here. The earlier build was a box palm with four
+ * cylinder-and-sphere fingers, which reads as a diagram of a hand rather than
+ * as a machine — at video resolution the joints looked like beads on sticks.
+ *
+ * What makes a prosthetic hand read as real is the MECHANISM: hinge pins whose
+ * axis you can see, knuckle housings the fingers are actually mounted in, a
+ * palm with a thumb mound instead of a flat slab, tendon cables running the
+ * backs of the fingers, and a wrist that looks like it could rotate. All of
+ * that is built below, in the scene's own material language — white ceramic
+ * shells, titanium hardware, one warm node — with the same ink silhouette
+ * every other object in the scene carries.
+ *
+ * ANIMATION CONTRACT (unchanged — actionSequence depends on it):
+ *   root       positioned by fingertip, via tipOffset
+ *   hand       rotation.x / rotation.z driven each frame; y is the entry angle
+ *   fingers[]  index 0 is the pressing digit; each flexes on rotation.x and
+ *              carries userData { rest, amp, phase }
+ *   palmNode   its core brightens on the press
  * ------------------------------------------------------------------------ */
 function buildRoboticHand(mat, geo, { segments }) {
   const root = new THREE.Group();
   const hand = new THREE.Group();
   root.add(hand);
 
-  const jointGeo = geo.track(new THREE.SphereGeometry(1, segments, Math.max(4, segments - 2)));
+  // Faceted spheres were readable as "a sphere" at the old counts but not as
+  // a machined knuckle. This is one object on screen at close range; it can
+  // afford the triangles.
+  const seg = Math.max(8, segments);
+  const jointGeo = geo.track(new THREE.SphereGeometry(1, seg, Math.max(6, seg - 4)));
 
-  // Real tapered segments: a shared unit cylinder can't taper under scale, and
-  // the taper is most of what makes a finger read as a finger.
+  // Tendon cable. Dark, thin and matte — a line of shadow between the shells,
+  // which is what stops the fingers reading as smooth white tubes.
+  const cableMat = new THREE.MeshStandardMaterial({
+    color: 0x6f6a63, roughness: 0.72, metalness: 0.15,
+  });
+  geo.trackMaterial(cableMat);
+
+  // Ink outline, exactly as businessObjects does it: on a near-white page the
+  // silhouette is what separates a white object from the background. The old
+  // hand carried none, which is much of why it read as soft.
+  const edgeCache = new Map();
+  const outline = (mesh, key) => {
+    let e = edgeCache.get(key);
+    if (!e) {
+      e = geo.track(new THREE.EdgesGeometry(mesh.geometry, 32));
+      edgeCache.set(key, e);
+    }
+    mesh.add(new THREE.LineSegments(e, mat.ink));
+    return mesh;
+  };
+
+  /** Tapered shell between two points — the taper is most of what makes a
+   *  finger read as a finger rather than as a pipe. */
   const bone = (from, to, r0, r1, material) => {
     const dir = _v.subVectors(to, from);
     const len = dir.length() || 1e-4;
     const mesh = new THREE.Mesh(
-      geo.track(new THREE.CylinderGeometry(r1, r0, len, segments, 1)),
+      geo.track(new THREE.CylinderGeometry(r1, r0, len, seg, 1)),
       material,
     );
     mesh.position.copy(from).addScaledVector(dir, 0.5);
@@ -447,27 +490,152 @@ function buildRoboticHand(mat, geo, { segments }) {
     mesh.position.copy(at);
     return mesh;
   };
+  /** Hinge pin: a short axle lying across the finger, so the joint has a
+   *  visible axis. A bare sphere cannot say which way a finger bends. */
+  const pinGeo = geo.track(new THREE.CylinderGeometry(1, 1, 1, Math.max(8, seg - 2)));
+  const pin = (at, r, len) => {
+    const mesh = new THREE.Mesh(pinGeo, mat.titanium);
+    mesh.scale.set(r, len, r);
+    mesh.rotation.z = Math.PI / 2;
+    mesh.position.copy(at);
+    return mesh;
+  };
   const V = (x, y, z) => new THREE.Vector3(x, y, z);
 
-  // forearm + palm
-  hand.add(bone(V(0, 0, -1.5), V(0, 0, -0.42), 0.15, 0.15, mat.ceramic));
-  const cuff = new THREE.Mesh(geo.track(new THREE.TorusGeometry(0.17, 0.022, 8, 24)), mat.titanium);
-  cuff.position.set(0, 0, -0.46);
+  /** Chamfered slab: a rounded rectangle extruded and bevelled, thickness on
+   *  Y. A plain BoxGeometry palm reads as a block of wood — every edge is a
+   *  hard 90 degrees and catches a hard specular line. Real hardware, and
+   *  real hands, are radiused everywhere. */
+  const roundedSlab = (w, d, h, r) => {
+    const hw = w / 2 - r;
+    const hd = d / 2 - r;
+    const shape = new THREE.Shape();
+    shape.moveTo(-hw - r, -hd);
+    shape.lineTo(-hw - r, hd);
+    shape.quadraticCurveTo(-hw - r, hd + r, -hw, hd + r);
+    shape.lineTo(hw, hd + r);
+    shape.quadraticCurveTo(hw + r, hd + r, hw + r, hd);
+    shape.lineTo(hw + r, -hd);
+    shape.quadraticCurveTo(hw + r, -hd - r, hw, -hd - r);
+    shape.lineTo(-hw, -hd - r);
+    shape.quadraticCurveTo(-hw - r, -hd - r, -hw - r, -hd);
+    const bevel = Math.min(0.022, h * 0.3);
+    const g = new THREE.ExtrudeGeometry(shape, {
+      depth: Math.max(0.001, h - bevel * 2),
+      bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel,
+      bevelSegments: 2, curveSegments: 6,
+    });
+    g.rotateX(-Math.PI / 2);
+    g.computeBoundingBox();
+    const c = g.boundingBox.getCenter(new THREE.Vector3());
+    g.translate(-c.x, -c.y, -c.z);
+    return geo.track(g);
+  };
+
+  /* ---- forearm + wrist -------------------------------------------------
+   * Tapered, with two actuator rods beneath it and a real wrist ball. The old
+   * forearm was a constant-radius rod, which is what made it read as a stick
+   * the hand was stuck onto.
+   */
+  // Proportion is the whole game here. A forearm thicker than the palm is
+  // wide turns the hand into a nozzle on the end of a pipe — which is exactly
+  // what the first pass produced. On a real arm the wrist is the NARROWEST
+  // point and the forearm only swells gently toward the elbow, so the numbers
+  // below are keyed to the palm: wrist radius sits just under half the palm
+  // width, and the shaft runs far enough back to leave frame instead of
+  // ending in a visible cut-off cap.
+  hand.add(outline(bone(V(0, 0, -2.3), V(0, 0, -0.46), 0.132, 0.088, mat.ceramic), "forearm"));
+  [-0.062, 0.062].forEach((x) => {
+    const rod = new THREE.Mesh(
+      geo.track(new THREE.CylinderGeometry(0.016, 0.016, 0.9, 8)), mat.titanium,
+    );
+    rod.position.set(x, -0.098, -1.05);
+    rod.rotation.x = Math.PI / 2;
+    hand.add(rod);
+    const collar = new THREE.Mesh(
+      geo.track(new THREE.CylinderGeometry(0.026, 0.026, 0.05, 10)), mat.titanium,
+    );
+    collar.position.set(x, -0.094, -0.62);
+    collar.rotation.x = Math.PI / 2;
+    hand.add(collar);
+  });
+
+  const cuff = new THREE.Mesh(
+    geo.track(new THREE.TorusGeometry(0.098, 0.019, 10, 28)), mat.titanium,
+  );
+  cuff.position.set(0, 0, -0.48);
   hand.add(cuff);
+  hand.add(joint(V(0, 0, -0.4), 0.086, mat.titanium)); // wrist ball
+  const wristRing = new THREE.Mesh(
+    geo.track(new THREE.TorusGeometry(0.098, 0.015, 8, 24)), mat.titanium,
+  );
+  wristRing.position.set(0, 0, -0.33);
+  hand.add(wristRing);
 
-  const palm = new THREE.Mesh(geo.track(new THREE.BoxGeometry(0.34, 0.1, 0.4)), mat.ceramic);
-  palm.position.set(0, 0, -0.16);
-  hand.add(palm);
-  const palmNode = new THREE.Mesh(geo.track(new THREE.SphereGeometry(0.045, 10, 10)), mat.nodeWarm);
-  palmNode.position.set(0, 0.06, -0.14);
+  /* ---- palm ------------------------------------------------------------
+   * A back plate, a slimmer core, and two soft mounds: the thenar at the
+   * thumb base and the hypothenar on the outer edge. A hand is not a slab,
+   * and those two mounds are what the eye uses to tell which way it faces.
+   */
+  // Thickness matters more than width. Two thin stacked plates read as a
+  // spatula from the side, which is how the hand looked edge-on; a real palm
+  // is roughly a third as thick as it is wide, so this is one solid chassis
+  // with a raised panel on the back of the hand.
+  const palmCore = new THREE.Mesh(roundedSlab(0.315, 0.395, 0.125, 0.055), mat.ceramic);
+  palmCore.position.set(0, 0.004, -0.155);
+  hand.add(outline(palmCore, "palmCore"));
+
+  const backPlate = new THREE.Mesh(roundedSlab(0.255, 0.315, 0.026, 0.05), mat.ceramic);
+  backPlate.position.set(0, 0.077, -0.16);
+  hand.add(outline(backPlate, "backPlate"));
+
+  const mound = (x, y, z, sx, sy, sz) => {
+    const m = new THREE.Mesh(jointGeo, mat.ceramic);
+    m.scale.set(sx, sy, sz);
+    m.position.set(x, y, z);
+    hand.add(m);
+  };
+  mound(-0.118, -0.048, -0.1, 0.082, 0.05, 0.125); // thenar, at the thumb base
+  mound(0.13, -0.048, -0.13, 0.078, 0.052, 0.12);   // hypothenar, outer edge
+
+  // Knuckle axle across the top of the palm. The fingers now visibly hang off
+  // something instead of starting in mid-air at the palm's edge.
+  const knuckleBar = new THREE.Mesh(
+    geo.track(new THREE.CylinderGeometry(0.05, 0.05, 0.305, seg)), mat.titanium,
+  );
+  knuckleBar.rotation.z = Math.PI / 2;
+  knuckleBar.position.set(0, 0.026, 0.05);
+  hand.add(knuckleBar);
+
+  // The warm core, seen through the back of the hand: the only lit part, and
+  // what makes the press read as the machine waking up.
+  //
+  // Its OWN material. nodeWarm is shared with the A->B->C conduit nodes and
+  // the ribbon travellers, so driving its opacity from the press was dimming
+  // all of those across the scene at the same time.
+  const palmNodeMat = mat.nodeWarm.clone();
+  geo.trackMaterial(palmNodeMat);
+  const palmNode = new THREE.Mesh(geo.track(new THREE.SphereGeometry(0.05, 12, 12)), palmNodeMat);
+  palmNode.position.set(0, 0.088, -0.155);
   hand.add(palmNode);
+  const nodeRim = new THREE.Mesh(
+    geo.track(new THREE.TorusGeometry(0.062, 0.011, 8, 20)), mat.titanium,
+  );
+  nodeRim.position.set(0, 0.09, -0.155);
+  nodeRim.rotation.x = Math.PI / 2;
+  hand.add(nodeRim);
 
-  // fingers: index is extended (the pressing digit), the rest are curled
+  /* ---- fingers ---------------------------------------------------------
+   * Index extended (the pressing digit), the rest curled. Each phalanx is a
+   * tapered shell with a visible hinge pin at its base and a tendon cable
+   * along its back; the last one gets a flattened contact pad underneath —
+   * the part that actually meets the button.
+   */
   const FINGERS = [
-    { x: -0.115, lens: [0.17, 0.12, 0.085], curl: [0.02, 0.05, 0.05], r: [0.042, 0.037, 0.031, 0.024] },
-    { x: -0.038, lens: [0.15, 0.115, 0.085], curl: [0.55, 0.75, 0.6], r: [0.04, 0.035, 0.03, 0.023] },
-    { x: 0.04, lens: [0.14, 0.108, 0.08], curl: [0.6, 0.8, 0.62], r: [0.038, 0.033, 0.028, 0.022] },
-    { x: 0.112, lens: [0.115, 0.09, 0.068], curl: [0.66, 0.85, 0.66], r: [0.034, 0.03, 0.025, 0.02] },
+    { x: -0.111, lens: [0.175, 0.125, 0.09], curl: [0.02, 0.05, 0.05], r: [0.058, 0.052, 0.045, 0.035] },
+    { x: -0.036, lens: [0.155, 0.12, 0.088], curl: [0.55, 0.75, 0.6], r: [0.056, 0.05, 0.043, 0.034] },
+    { x: 0.039, lens: [0.145, 0.112, 0.083], curl: [0.6, 0.8, 0.62], r: [0.053, 0.047, 0.04, 0.032] },
+    { x: 0.11, lens: [0.12, 0.094, 0.071], curl: [0.66, 0.85, 0.66], r: [0.048, 0.042, 0.036, 0.028] },
   ];
   const fingers = [];
   const xAxis = V(1, 0, 0);
@@ -480,17 +648,50 @@ function buildRoboticHand(mat, geo, { segments }) {
 
   FINGERS.forEach((f, fi) => {
     const g = new THREE.Group();
-    g.position.set(f.x, 0.02, 0.04);
+    g.position.set(f.x, 0.028, 0.05);
+
+    // knuckle housing this finger is mounted in
+    const housing = new THREE.Mesh(jointGeo, mat.ceramic);
+    housing.scale.set(f.r[0] * 1.5, f.r[0] * 1.25, f.r[0] * 1.5);
+    g.add(housing);
+
     let p = V(0, 0, 0);
     let dir = V(0, 0.12, 1).normalize();
+    let curled = 0;
     f.lens.forEach((len, i) => {
       dir = dir.clone().applyAxisAngle(xAxis, f.curl[i]);
+      curled += f.curl[i];
       const next = p.clone().addScaledVector(dir, len);
-      g.add(bone(p, next, f.r[i], f.r[i + 1], i === f.lens.length - 1 ? mat.titanium : mat.ceramic));
-      g.add(joint(p, f.r[i] * 1.15, mat.titanium));
+      const last = i === f.lens.length - 1;
+
+      g.add(outline(
+        bone(p, next, f.r[i], f.r[i + 1], last ? mat.titanium : mat.ceramic), `fb${fi}_${i}`,
+      ));
+      g.add(pin(p, f.r[i] * 0.8, f.r[i] * 2.05));
+
+      // Tendon cable along the back of this phalanx, half-buried in the shell.
+      // Standing it proud read as a stray wire rather than as a tendon, and
+      // the distal segment is skipped entirely — there it is short enough that
+      // it only ever showed as a whisker past the fingertip.
+      const up = V(0, 1, 0).applyAxisAngle(xAxis, curled);
+      if (!last) {
+        g.add(bone(
+          p.clone().addScaledVector(up, f.r[i] * 0.68),
+          next.clone().addScaledVector(up, f.r[i + 1] * 0.68),
+          0.0095, 0.0095, cableMat,
+        ));
+      }
+
+      if (last) {
+        const pad = new THREE.Mesh(jointGeo, mat.ceramic);
+        pad.scale.set(f.r[3] * 1.15, f.r[3] * 0.62, f.r[3] * 1.5);
+        pad.position.copy(next).addScaledVector(up, -f.r[3] * 0.5);
+        g.add(pad);
+      }
       p = next;
     });
-    g.add(joint(p, f.r[3] * 1.1, mat.titanium));
+    g.add(joint(p, f.r[3] * 1.05, mat.titanium));
+
     if (fi === 0) {
       tipAnchor.position.copy(p);
       g.add(tipAnchor);
@@ -500,22 +701,33 @@ function buildRoboticHand(mat, geo, { segments }) {
     hand.add(g);
   });
 
-  // thumb
+  /* ---- thumb -----------------------------------------------------------
+   * Three parts now instead of two, mounted on a saddle joint at the thenar
+   * rather than sprouting from the side of the palm. The thumb is the digit
+   * that tells a viewer this is a hand and not a gripper.
+   */
   const thumb = new THREE.Group();
-  thumb.position.set(-0.17, -0.01, -0.06);
+  thumb.position.set(-0.15, -0.045, -0.07);
   {
+    const saddle = new THREE.Mesh(jointGeo, mat.titanium);
+    saddle.scale.set(0.065, 0.055, 0.065);
+    thumb.add(saddle);
+
     let p = V(0, 0, 0);
-    let dir = V(-0.5, 0.25, 0.6).normalize();
-    const lens = [0.12, 0.095];
-    const rr = [0.05, 0.04, 0.031];
-    [0.3, 0.5].forEach((curl, i) => {
-      dir = dir.clone().applyAxisAngle(V(0.3, 0.2, 0.9).normalize(), curl);
+    let dir = V(-0.5, 0.22, 0.62).normalize();
+    const lens = [0.125, 0.105, 0.076];
+    const rr = [0.06, 0.051, 0.042, 0.032];
+    const axis = V(0.3, 0.2, 0.9).normalize();
+    [0.26, 0.42, 0.36].forEach((curl, i) => {
+      dir = dir.clone().applyAxisAngle(axis, curl);
       const next = p.clone().addScaledVector(dir, lens[i]);
-      thumb.add(bone(p, next, rr[i], rr[i + 1], i === 1 ? mat.titanium : mat.ceramic));
-      thumb.add(joint(p, rr[i] * 1.15, mat.titanium));
+      thumb.add(outline(
+        bone(p, next, rr[i], rr[i + 1], i === 2 ? mat.titanium : mat.ceramic), `tb${i}`,
+      ));
+      thumb.add(joint(p, rr[i] * 1.12, mat.titanium));
       p = next;
     });
-    thumb.add(joint(p, rr[2] * 1.1, mat.titanium));
+    thumb.add(joint(p, rr[3] * 1.05, mat.titanium));
   }
   thumb.userData = { rest: 0, amp: 0.05, phase: 2.4 };
   fingers.push(thumb);
@@ -523,8 +735,14 @@ function buildRoboticHand(mat, geo, { segments }) {
 
   // Enters from the right and slightly in front, index finger angled down-left
   // onto the control. Kept forward of the hub so the forearm never crosses it.
-  hand.rotation.set(-0.62, -1.38, -0.16);
-  root.scale.setScalar(1.9);
+  // The yaw is what decides whether the viewer sees a HAND or a blade. At
+  // -1.38 the palm was almost edge-on to camera and the fingers read as a
+  // rake; turning it toward the lens shows the back of the hand, the knuckle
+  // row and the thumb in the same shot. Scale is up too — this is the one
+  // object in the scene that acts, and it was reading smaller than the button
+  // it presses.
+  hand.rotation.set(-0.62, -1.02, -0.16);
+  root.scale.setScalar(2.15);
 
   // Where the fingertip sits relative to the root, in root-parent space, for
   // the current pose. Measured once rather than assumed.
@@ -848,7 +1066,7 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
 
   let hand = null;
   if (tier.hand) {
-    hand = buildRoboticHand(mat, geo, { segments: mobile ? 5 : 8 });
+    hand = buildRoboticHand(mat, geo, { segments: mobile ? 10 : 16 });
     stageB.add(hand.root);
   }
 
