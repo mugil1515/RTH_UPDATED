@@ -670,18 +670,18 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
       // lives.
       services: 4, orbits: 1, particles: 10, seg: 24, tubular: 40,
       hand: true, intake: 3, manual: 3, queue: 3, outputs: 3,
-      billing: 5, pipeline: 5, customers: 2, labels: false, industry: 4,
+      pipeline: 5, customers: 2, labels: false, industry: 4,
     }
     : tablet
       ? {
         services: 5, orbits: 3, particles: 40, seg: 36, tubular: 72,
         hand: true, intake: 4, manual: 4, queue: 4, outputs: 4,
-        billing: 6, pipeline: 6, customers: 3, labels: true, industry: 6,
+        pipeline: 6, customers: 3, labels: true, industry: 6,
       }
       : {
         services: 6, orbits: 4, particles: 70, seg: 56, tubular: 104,
         hand: true, intake: 4, manual: 5, queue: 5, outputs: 5,
-        billing: 6, pipeline: 6, customers: 3, labels: true, industry: 6,
+        pipeline: 6, customers: 3, labels: true, industry: 6,
       };
 
   // disposal bookkeeping
@@ -840,7 +840,7 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
   });
   stageB.add(orbitB.group);
 
-  const billing = createBillingLine(objects, mat, geo, { seg: tier.seg, count: tier.billing });
+  const billing = createBillingLine(objects, mat, geo, { seg: tier.seg, mobile });
   stageB.add(billing.root);
 
   const action = createActionSequence(objects, mat, geo, { seg: tier.seg, customers: tier.customers });
@@ -1005,7 +1005,7 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
 
   function update(
     progress, elapsed, delta, mood = DEFAULT_MOOD, beats = null, sections = null,
-    industry = null, agentPhase = null, agentPresence = 0,
+    industry = null, agentPhase = null, agentPresence = 0, billingPhase = null,
   ) {
     const p = clamp01(progress);
     const energy = mood.energy ?? 1;
@@ -1208,9 +1208,16 @@ export function createAutomationScene({ mobile = false, tablet = false } = {}) {
       // coreHalo is set below, once the press has been evaluated.
 
       // Under reduced motion the caller sends delta 0, which would park the
-      // billing line at phase 0 — an empty conveyor. Holding it late instead
-      // keeps the meaning readable as a still frame.
-      billing.update(elapsed, delta, billingW, still ? 0.93 : null);
+      // billing line at phase 0 — an empty conveyor. Holding it in the final
+      // all-green state instead keeps the meaning readable as a still frame.
+      //
+      // Otherwise the chain runs on the #billing scroll position when the
+      // caller supplies one. A free-running internal clock could only ever be
+      // caught at a random step as the section came into view — which is why
+      // the recorded video kept showing a billing process that never visibly
+      // finished. Anchored to the section, step 1 starts as the section
+      // arrives and the all-green state lands while it is still on screen.
+      billing.update(elapsed, delta, billingW, still ? 0.93 : null, billingPhase);
       // The execution chain is driven entirely by the section's scroll
       // position now — no internal clock — so there is nothing to "hold" for
       // reduced motion: scrolling is user-driven, which is exactly the kind of

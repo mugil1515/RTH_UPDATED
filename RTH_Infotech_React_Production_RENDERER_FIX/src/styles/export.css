@@ -1,0 +1,146 @@
+/* ANIMATION EXPORT MODE  —  html.rth-export, enabled only by ?animationStory=1
+ *
+ * This is not a second animation. It is the real homepage, with the foreground
+ * turned off, so the background scene can be recorded exactly as it plays while
+ * scrolling. Nothing here runs on the normal site: every rule is scoped to the
+ * html.rth-export class, which useExportMode only sets when the query parameter
+ * is present.
+ *
+ * WHY visibility AND NOT display
+ * The whole storyboard is anchored to the MEASURED positions of the real
+ * sections (storyboard.js resolves camera keyframes and beats from
+ * getBoundingClientRect + ScrollTrigger.maxScroll). display: none would change
+ * every section's height and the document's scroll length, which would move
+ * every anchor and produce a different animation - the one thing the export
+ * must not do. visibility: hidden keeps the layout, the scroll height and the
+ * trigger boundaries byte-for-byte identical, and only stops the paint.
+ */
+
+/* Everything React renders under #root except the background layer and the
+   caption overlay. That is the hero, the section copy, cards, forms, logo,
+   footer, chatbot, scroll-top, loader and route transition - in one rule, with
+   no list to keep in sync. */
+html.rth-export #root > *:not(.app-background):not(.story-captions) {
+  visibility: hidden !important;
+}
+
+/* The content scrim and focus veil exist to keep the 3D story off the copy.
+   With no copy on screen they have nothing to protect and would only wash out
+   the animation being recorded, so they are the one thing switched off rather
+   than hidden. */
+html.rth-export .content-scrim,
+html.rth-export .focus-layer {
+  opacity: 0 !important;
+}
+
+/* The JSON / LIVE DATA streams are removed from the video entirely. They are
+   ambient texture for a page that has copy over it; on their own, at video
+   scale, they read as debug output and pull the eye off the machine. display:
+   none rather than opacity, so nothing can survive as a faint ghost.
+   The live site keeps them exactly as they are - this rule cannot apply there. */
+html.rth-export .code-streams {
+  display: none !important;
+}
+
+/* The scene is normally composited under type, so it carries a deliberate
+   reserve of contrast. On its own it can use all of it - this is a visibility
+   adjustment only: no geometry, timing or colour is changed. */
+html.rth-export .three-background {
+  opacity: 1 !important;
+  filter: contrast(1.04) saturate(1.03);
+}
+
+/* The page ground the scene is composited over, matched to the site's own. */
+html.rth-export,
+html.rth-export body {
+  background: #fbfaf8 !important;
+}
+
+/* No scrollbar in the recording. Scrolling itself still works - the exporter
+   drives it - and the gutter is what would otherwise change the canvas width
+   between the live page and the captured frame. */
+html.rth-export::-webkit-scrollbar,
+html.rth-export body::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+html.rth-export {
+  scrollbar-width: none;
+}
+
+
+/* ---- stage captions -----------------------------------------------------
+ * Title + one sentence, laid in the negative space beside the machine. The
+ * component writes the text and the opacity every frame (see
+ * story/StoryCaptions.jsx); everything here is static styling.
+ */
+.story-captions {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.story-caption {
+  position: absolute;
+  opacity: 0;
+  /* Desktop: bottom-left. The camera keeps the machine centre/right through
+     the whole storyboard, so this corner is the one piece of frame that is
+     never carrying the core, the control or the hand. */
+  left: 4.2vw;
+  bottom: 7.5vh;
+  max-width: 30rem;
+  padding: 18px 22px 19px;
+  border: 1px solid rgba(107, 101, 93, 0.16);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 10px 34px rgba(60, 52, 44, 0.07);
+}
+
+.story-caption-title {
+  margin: 0 0 9px;
+  color: #eb6217;
+  font-family: "Space Grotesk", Inter, system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.story-caption-line {
+  margin: 0;
+  color: #2f2b27;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 1.06rem;
+  font-weight: 450;
+  line-height: 1.5;
+}
+
+.story-caption-tag {
+  margin: 12px 0 0;
+  color: #6b655d;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Mobile: the 9:16 framing puts the machine in the middle band of the frame,
+   so the caption goes to the TOP safe area - not a re-used desktop position.
+   Type is relatively larger and the measure shorter. */
+@media (max-width: 760px) {
+  .story-caption {
+    left: 6%;
+    right: 6%;
+    bottom: auto;
+    top: 7%;
+    max-width: none;
+    padding: 20px 22px 22px;
+    border-radius: 16px;
+  }
+  .story-caption-title { font-size: 1.02rem; letter-spacing: 0.18em; margin-bottom: 10px; }
+  .story-caption-line { font-size: 1.34rem; line-height: 1.45; }
+  .story-caption-tag { font-size: 0.9rem; margin-top: 14px; }
+}

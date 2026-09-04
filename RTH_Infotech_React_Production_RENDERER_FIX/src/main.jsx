@@ -7,6 +7,8 @@ import "@/styles/effects.css";
 import "@/styles/animations.css";
 import "@/styles/serviceVisuals.css";
 import "@/styles/chatbot.css";
+import "@/styles/story.css";
+import "@/styles/export.css";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>

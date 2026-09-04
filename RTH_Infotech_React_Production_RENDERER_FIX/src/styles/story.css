@@ -1,0 +1,242 @@
+/* Standalone automation-story viewer.
+ *
+ * Deliberately its own file and its own class namespace: the viewer must not
+ * inherit, or leak into, any of the page's section styling. Nothing here
+ * changes an existing rule.
+ */
+
+/* ---- trigger ----------------------------------------------------------- */
+.story-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  /* 44px minimum touch target, per the brief. */
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(107, 101, 93, 0.22);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px);
+  color: var(--text-secondary, #55504a);
+  font-family: inherit;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.25s ease, color 0.25s ease, transform 0.25s ease;
+}
+.story-trigger:hover {
+  border-color: rgba(235, 98, 23, 0.5);
+  color: #eb6217;
+  transform: translateY(-1px);
+}
+.story-trigger-icon {
+  width: 0;
+  height: 0;
+  border-left: 9px solid #eb6217;
+  border-top: 5.5px solid transparent;
+  border-bottom: 5.5px solid transparent;
+}
+
+/* ---- full-screen viewer ------------------------------------------------
+ * Opaque, not translucent: this is a dedicated presentation surface, so none
+ * of the page behind it may show through. The z-index sits above every layer
+ * the site defines (its highest, --z-loader, is 100).
+ */
+.story-viewer {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  /* dvh where supported: on mobile browsers 100vh is the *expanded* viewport,
+     which pushes the controls under the URL bar. */
+  height: 100dvh;
+  z-index: 1000;
+  background: #fbfaf8;
+  overflow: hidden;
+  animation: story-fade 0.28s ease both;
+}
+@keyframes story-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* The video fills the viewport and is letterboxed against it - contain, never
+   cover, so no frame of either cut is ever cropped. */
+.story-video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: #fbfaf8;
+  cursor: pointer;
+  /* Own compositor layer, so each decoded frame is handed straight to the
+     compositor instead of being painted with the overlay behind it. No
+     filter, blend mode or shadow may be added here: any of them puts the
+     video back on the paint path, one full-resolution pass per frame. */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* ---- exits -------------------------------------------------------------
+ * Home is the primary way out and takes the leading corner; the X keeps the
+ * conventional trailing one. Both clear the notch and the status bar.
+ */
+.story-home,
+.story-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 16px);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 999px;
+  background: #fefaf8;
+  box-shadow: 0 6px 22px rgba(60, 52, 44, 0.12);
+  color: #3d3934;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.story-home {
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  min-width: 44px;
+  padding: 0 20px;
+  border: 1px solid rgba(235, 98, 23, 0.45);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.story-home:hover { border-color: #eb6217; transform: translateY(-1px); }
+.story-home-arrow {
+  color: #eb6217;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.story-close {
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  width: 44px;
+  border: 1px solid rgba(107, 101, 93, 0.2);
+  font-size: 0.9rem;
+}
+.story-close:hover { border-color: rgba(235, 98, 23, 0.55); color: #eb6217; }
+
+/* ---- controls ----------------------------------------------------------
+ * A single slim bar pinned to the bottom safe area, and the only chrome
+ * besides the two exits.
+ *
+ * WHERE IT SITS, AND WHY IT IS NOT CENTRED
+ * The explanation cards are part of the recorded picture, not DOM - they are
+ * drawn into the frames by story/StoryCaptions during the offline render
+ * (see export.css). On the 16:9 cut they occupy the bottom-LEFT corner:
+ * left 4.2%, up to 30rem wide, rising ~20% of the frame height. A bar centred
+ * on the viewport ran straight through the right half of that card and clipped
+ * the sentence. Since the card cannot move without re-rendering the video, the
+ * bar moves instead: on desktop it is narrow and anchored to the trailing edge,
+ * which leaves the whole left third of the frame to the card.
+ *
+ * The 9:16 cut puts its captions in the TOP safe area instead, so below 768px
+ * the bottom edge is free and the bar keeps its full-width position.
+ */
+.story-controls {
+  position: absolute;
+  left: calc(env(safe-area-inset-left, 0px) + 16px);
+  right: calc(env(safe-area-inset-right, 0px) + 16px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fcfaf8;
+  box-shadow: 0 5px 18px rgba(60, 52, 44, 0.09);
+}
+@media (min-width: 768px) {
+  .story-controls {
+    left: auto;
+    right: calc(env(safe-area-inset-right, 0px) + 24px);
+    width: min(360px, 34vw);
+    gap: 7px;
+    padding: 3px 8px;
+  }
+}
+
+/* 40px on touch, 34px for a pointer: comfortably clickable at both, and the
+   bar's height follows the button, so shrinking this compacts the whole
+   control area rather than just the circles. */
+.story-ctl {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(107, 101, 93, 0.2);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  color: #55504a;
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.story-ctl:hover { border-color: rgba(235, 98, 23, 0.55); color: #eb6217; }
+@media (min-width: 768px) {
+  .story-ctl { width: 34px; height: 34px; font-size: 0.78rem; }
+}
+
+/* The unfilled rail is painted as a 3px centred background band, so it needs
+   no positioned ancestor and stays aligned with the fill at any width. */
+.story-progress {
+  flex: 1 1 auto;
+  /* Matches the button so the bar stays one height; the visible rail is 2px
+     and the rest of this box is hit area, so a thinner rail costs no
+     precision when seeking. */
+  height: 40px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  background: linear-gradient(rgba(107, 101, 93, 0.18), rgba(107, 101, 93, 0.18))
+    center / 100% 2px no-repeat;
+}
+@media (min-width: 768px) {
+  .story-progress { height: 34px; }
+}
+.story-progress i {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background: #eb6217;
+  border-radius: 2px;
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.12s linear;
+}
+
+/* ---- buffering ---------------------------------------------------------
+ * Shown only for waiting/stalled - a genuinely empty buffer - never for an
+ * ordinary pause, so it does not blink during normal playback.
+ */
+.story-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border: 2px solid rgba(107, 101, 93, 0.2);
+  border-top-color: #eb6217;
+  border-radius: 50%;
+  animation: story-spin 0.8s linear infinite;
+  pointer-events: none;
+}
+@keyframes story-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .story-viewer { animation: none; }
+  .story-loading { animation-duration: 2.4s; }
+  .story-trigger,
+  .story-home,
+  .story-close { transition: none; }
+}

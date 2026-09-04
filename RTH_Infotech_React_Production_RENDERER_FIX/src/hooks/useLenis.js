@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import Lenis from "lenis";
 import { gsap, ScrollTrigger } from "@/animations/gsapConfig";
+import { isSceneSuspended, onSceneSuspendChange } from "@/utils/sceneSuspend";
 
 export default function useLenis() {
   useEffect(() => {
@@ -24,7 +25,17 @@ export default function useLenis() {
     // scrollTo() targets and internal clamping drift out of sync with the real
     // (pin-inflated) document, causing scroll jumps/overshoot around the pin.
     const onRefresh = () => lenis.resize();
-    const raf = (time) => lenis.raf(time * 1000);
+    // While a full-screen overlay covers the page there is nothing to smooth:
+    // the body is scroll-locked, so every pump is a wasted main-thread slice
+    // taken from whatever is playing on top. lenis.stop()/start() is the
+    // library's own pause — it keeps the instance, its cached limits and its
+    // scroll value, so scrollTo() from the overlay's teardown still lands.
+    let suspended = isSceneSuspended();
+    const raf = (time) => { if (!suspended) lenis.raf(time * 1000); };
+    const offSuspend = onSceneSuspendChange((next) => {
+      suspended = next;
+      if (next) lenis.stop(); else lenis.start();
+    });
     lenis.on("scroll", onScroll);
     ScrollTrigger.addEventListener("refresh", onRefresh);
     // Descendant layout effects (e.g. the services orbit's pin) have already run
@@ -34,6 +45,6 @@ export default function useLenis() {
     gsap.ticker.add(raf);
     gsap.ticker.lagSmoothing(0);
     window.__rthLenis = lenis;
-    return () => { gsap.ticker.remove(raf); lenis.off("scroll", onScroll); ScrollTrigger.removeEventListener("refresh", onRefresh); lenis.destroy(); delete window.__rthLenis; };
+    return () => { offSuspend(); gsap.ticker.remove(raf); lenis.off("scroll", onScroll); ScrollTrigger.removeEventListener("refresh", onRefresh); lenis.destroy(); delete window.__rthLenis; };
   }, []);
 }

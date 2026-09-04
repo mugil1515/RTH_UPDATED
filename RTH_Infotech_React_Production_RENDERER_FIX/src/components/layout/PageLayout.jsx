@@ -10,10 +10,14 @@ import InnerBackButton from "@/components/common/InnerBackButton";
 import Chatbot from "@/components/chatbot/Chatbot";
 import useLenis from "@/hooks/useLenis";
 import useScrollTriggerRefresh from "@/hooks/useScrollTriggerRefresh";
+import useExportMode, { isExportMode } from "@/hooks/useExportMode";
+import StoryCaptions from "@/story/StoryCaptions";
 
 export default function PageLayout() {
   useLenis();
   useScrollTriggerRefresh();
+  // No-op unless ?animationStory=1 is present (see hooks/useExportMode.js).
+  useExportMode();
   const { pathname, state } = useLocation();
 
   // Remember the visitor's latest position on Home so top-level pages such
@@ -85,6 +89,9 @@ export default function PageLayout() {
       <Footer />
       <ScrollTop />
       <Chatbot />
+      {/* Stage captions for the recorded animation. Never mounted on a normal
+          visit - isExportMode() is only true for /?animationStory=1. */}
+      {isExportMode() && <StoryCaptions />}
     </>
   );
 }

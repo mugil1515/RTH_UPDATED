@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { gsap, ScrollTrigger } from "@/animations/gsapConfig";
+import { isExportMode } from "@/hooks/useExportMode";
+import { isSceneSuspended, onSceneSuspendChange } from "@/utils/sceneSuspend";
 import {
   createAutomationScene,
   DEFAULT_MOOD,
@@ -79,7 +81,14 @@ export default function ThreeBackground({ routePath = "" }) {
       return undefined;
     }
 
-    const pixelRatioCap = lowPower ? 1.1 : 1.45;
+    // The cap is a per-frame budget guard for real devices. The offline video
+    // export has no frame budget and writes a fixed-resolution file, so a
+    // phone-width capture would otherwise be upscaled from a 1.1x buffer and
+    // land in the MP4 visibly soft. Resolution only - composition, geometry
+    // tier and timing are untouched, and without ?animationStory=1 this is
+    // exactly the value it always was.
+    const exportMode = isExportMode();
+    const pixelRatioCap = exportMode ? 3 : (lowPower ? 1.1 : 1.45);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, pixelRatioCap));
 
     // Size from the canvas's own laid-out box, not from window.innerWidth.
@@ -504,6 +513,14 @@ export default function ThreeBackground({ routePath = "" }) {
     // component can ask for. Resizing the renderer and camera on every event is
     // cheap and must still happen; the refresh is reserved for a change that
     // can genuinely have moved trigger boundaries.
+    let sceneSuspended = isSceneSuspended();
+    const offSuspend = onSceneSuspendChange((suspended) => {
+      sceneSuspended = suspended;
+      // getDelta() keeps accumulating while the body is skipped; drain it on
+      // resume so the first live frame gets a normal-sized step.
+      if (!suspended) clock.getDelta();
+    });
+
     let lastWidth = window.innerWidth;
     let lastHeight = window.innerHeight;
     const URL_BAR_TOLERANCE = 140;
@@ -527,7 +544,12 @@ export default function ThreeBackground({ routePath = "" }) {
 
     const render = () => {
       raf = requestAnimationFrame(render);
-      if (document.hidden || !renderer) return;
+      // A hidden tab — or an opaque full-screen overlay covering the page —
+      // means nobody can see this frame. Skipping the whole body, not just the
+      // draw call, also keeps the clock's delta out of the idle animations, so
+      // the scene resumes on the frame it paused on instead of jumping forward
+      // by however long the overlay was open.
+      if (document.hidden || sceneSuspended || !renderer) return;
 
       const rawDelta = Math.min(clock.getDelta(), 0.05);
       // delta drives every idle animation, so zeroing it holds the scene on a
@@ -566,8 +588,21 @@ export default function ThreeBackground({ routePath = "" }) {
       // height: pull back so every object is smaller and further from the
       // type, and drop the whole scene lower in frame so the stacked heading
       // and card block sits above it rather than on top of it (brief §13).
-      const dolly = serviceMode ? framing.serviceDolly : framing.dolly;
-      const lift = serviceMode ? framing.serviceLift : framing.lift;
+      // Export-only widening. The live mobile framing lets the hand and the
+      // outer system modules run past the edge of a 9:16 frame - acceptable on
+      // a phone where the copy is the subject and the scene is behind it, not
+      // acceptable in a video whose subject IS the scene. The exporter sets
+      // this multiplier so nothing important is cropped; it is undefined (and
+      // therefore 1) on every normal visit, and it moves the camera back only -
+      // no object, order, beat or timing changes.
+      const exportDolly = exportMode ? (window.__rthExportDolly || 1) : 1;
+      const dolly = (serviceMode ? framing.serviceDolly : framing.dolly) * exportDolly;
+      // Same reasoning for the vertical: the mobile lift exists to drop the
+      // scene below the stacked heading and card block. With the copy hidden
+      // there is nothing above it to clear, and keeping the lift would just
+      // park the whole animation in the bottom third of the video frame.
+      const lift = (serviceMode ? framing.serviceLift : framing.lift)
+        * (exportMode && window.__rthExportLift !== undefined ? window.__rthExportLift : 1);
       const desiredPosZ = state.pos[2] * dolly - billingPush;
 
       desiredPosition.set(
@@ -606,6 +641,25 @@ export default function ThreeBackground({ routePath = "" }) {
         industry,
         serviceMode ? null : agentPhase,
         serviceMode ? 0 : agentPresence,
+        // The billing chain's own phase, from #billing's scroll window. The
+        // margins trim the lead-in and lead-out of that window — the section is
+        // barely on screen at either end, and the camera is still descending
+        // into its billing key for the first part of it — so the seven-step
+        // process both
+        // starts and reaches its finished, all-green state while the section
+        // is actually being looked at — the same reason agentPhase exists for
+        // the press.
+        //
+        // It deliberately finishes early — around 64% of the window rather
+        // than at its end — and then clamps. The clamp is not a rounding
+        // detail: it is what holds every step green and PROCESS COMPLETE on
+        // screen for the rest of the section instead of the chain fading out
+        // mid-workflow, which is what a 9:16 frame (where the section clears
+        // the viewport soonest) did before.
+        //
+        // Service routes have no billing section, so they send nothing and the
+        // line keeps its own clock.
+        serviceMode ? null : Math.min(1, Math.max(0, (billingProgress - 0.30) / 0.34)),
       );
 
       // Where the scene sits relative to the copy, per route.
@@ -678,6 +732,7 @@ export default function ThreeBackground({ routePath = "" }) {
 
     return () => {
       cancelAnimationFrame(raf);
+      offSuspend();
       reducedMotionQuery.removeEventListener("change", onMotionPreference);
       ScrollTrigger.removeEventListener("refresh", measure);
       bindSectionTriggersRef.current = null;
